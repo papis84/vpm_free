@@ -1,0 +1,10 @@
+2 2 2 !Dpm[X,Y,Z)
+4     !projection fun
+2     !boundary cond type
+1     !Variable/Constant Volume(0,1)
+0     !EPSVOL
+4     !ncoarse
+2 2 2 !Number of Blocks[i,j,k)  
+1 1   ! remesh(0,1)/Number of Particels per cell
+0  3  ! tree(0,1),Number of levels
+6     ! Number of threads
