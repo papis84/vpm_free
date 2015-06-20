@@ -35,7 +35,6 @@ endif
 #
 $(EXENAME): $(OBJS) 
 	    $(COMP) -module $(MODPATH) $(patsubst %.o,$(PATHOBJHP)/%.o, $(OBJSHP)) $(FLAGS) $(EXTRA_FLAGS)  $(LIBS)  -o $(EXENAME)
-	   #$(COMP) -module $(MODPATH)$(patsubst %.o,$(PATHOBJNS)/%.o,$(OBJSNS)) $(patsubst %.o,$(PATHOBJPM)/%.o,$(OBJSPM)) $(patsubst %.o,$(PATHOBJHP)/%.o,$(OBJS)) $(FLAGS) $(EXTRA_FLAGS)  $(LIBS)  -o $(EXENAME)
 
 #
 

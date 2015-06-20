@@ -2,6 +2,10 @@
 !This Subroutine remeshes particles  on the pm grid (4 particles per cell)
 !---------------------------------------------------------------------------------------------------
 
+Module test_mod
+double precision,allocatable,target:: XPR(:,:),QPR(:,:),UPR(:,:),GPR(:,:)
+integer :: NVR_ext
+end Module test_mod
 Subroutine remesh_particles_3d(iflag)
  use vpm_vars
  use pmeshpar
@@ -10,9 +14,11 @@ Subroutine remesh_particles_3d(iflag)
  use projlib
  use openmpth
  use mpi
+ use test_mod
   Implicit None
  
   integer,intent(in)  :: iflag
+! double precision,intent(inout):: XP_in(:,:),QP_in(:,:)
   double precision    :: X(8), Y(8),Z(8),Vol,XMIN_vr,YMIN_vr,DXvr,DYvr,ANG,dens1,dens2,Mach,DZvr,ZMIN_vr
   double precision, allocatable:: XC(:), YC(:), ZC(:)
   integer             :: i ,j ,k, NXpm1, NYpm1, NZpm1, ncell, npar,ndumc,nv,inode,jnode,knode,itype
@@ -49,9 +55,10 @@ DVpm = DXvr * DYvr  * DZvr
  NN(1) = NXpm; NN(2)= NYpm; NN(3)= NZpm
  NN_bl(1) = NXs_bl(1);NN_bl(2)= NYs_bl(1);NN_bl(3)=NZs_bl(1) 
  NN_bl(4) = NXf_bl(1);NN_bl(5)= NYf_bl(1);NN_bl(6)=NZf_bl(1) 
-
+ XP=>XPR
+ QP=>QPR
 if(iflag.eq.1) then
-       deallocate(RHS_pm)
+      !deallocate(RHS_pm)
        allocate(RHS_pm(4,NXpm,NYpm,NZpm))
 
         call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
@@ -60,6 +67,7 @@ if(iflag.eq.1) then
        allocate (XP_scatt(3,NVR_p),QP_scatt(7,NVR_p),NVR_projscatt(NVR_p))
        NVR_projscatt=interf_iproj
        call particles_scat
+       call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
        allocate(ieq(4),QINF(4))
        QINF(1)=0.d0;QINF(2)=0.d0;QINF(3)=0.d0;QINF(4)=0.d0
        ieq(1)=1;ieq(2)=2;ieq(3)=3;ieq(4)=4
@@ -71,13 +79,15 @@ if(iflag.eq.1) then
        if (my_rank.eq.0) then 
            call omp_set_num_threads(OMPTHREADS)
            RHS_pm(4,:,:,:)=DVpm
-           call project_vol3d(RHS_pm,4,ieq,4,0)
+           call project_vol3d(RHS_pm,4,ieq,4,IDVPM)
            call omp_set_num_threads(1)
        endif
 
        deallocate(ieq,QINF)
 else 
     if (my_rank.eq.0) then 
+       write(*,*) 'needs tests'
+       stop
        allocate(RHS_pm(4,NXpm,NYpm,NZpm))
        allocate(ieq(4),QINF(4))
 
@@ -93,7 +103,7 @@ else
 endif
 
 if (my_rank.eq.0) then 
-   deallocate(XP,QP,NVR_projtype)
+    deallocate(XPR,QPR)
     ncell =ncell_rem
     ndum_rem=2
     nnod  =1 !if ncell gt 1 particles IN cell else in nodes
@@ -110,10 +120,11 @@ if (my_rank.eq.0) then
     NYpm1   = nyfin - nystart + 1
     NZpm1   = nzfin - nzstart + 1
     NVR       =  NXpm1*NYpm1*NZpm1*ncell
-    allocate(XP(3,NVR),QP(4,NVR),NVR_projtype(NVR))
+    allocate(XPR(3,NVR),QPR(4,NVR))
+    XP=>XPR
+    QP=>QPR
     XP=0
     QP=0
-    NVR_projtype=0
     npar = 0
     V_ref = 1.d0/float(ncell)*DVpm
 !!$omp parallel private(i,j,k,npar,X,Y,Z) num_threads(OMPTHREADS)
@@ -160,7 +171,6 @@ if (my_rank.eq.0) then
               XP(1,npar) = XC(nc)
               XP(2,npar) = YC(nc)
               XP(3,npar) = ZC(nc)
-              NVR_projtype(npar) = interf_iproj
               QP(4,npar) =1.d0/float(ncell)*DVpm
            enddo
 
@@ -174,7 +184,6 @@ if (my_rank.eq.0) then
             QP(2,npar)= RHS_pm(2,i,j,k)* DVpm
             QP(3,npar)= RHS_pm(3,i,j,k)* DVpm
             QP(4,npar)= DVpm
-            NVR_projtype(npar) = interf_iproj
         endif
      enddo
     enddo
@@ -185,7 +194,7 @@ if (my_rank.eq.0) then
    if (ncell.gt.1) call back_to_particles_3D_rem(RHS_pm,XP,QP,Xbound,Dpm,NN,NVR,2)
    if (iflag.eq.0) deallocate(RHS_pm)
 
-write(*,*) 'remesh complete',NVR,npar,DVpm,maxval(abs(QP(6,:)))
+write(*,*) 'remesh complete',NVR,npar,DVpm
 endif
 !call back_to_particles_2D(4)
 
@@ -199,6 +208,8 @@ endif
  !     call system('rm vr.dat')
 !!----FOR PLOTTING PURPOSES ONLY
  ! close(1)
+NVR_ext=NVR
+deallocate(RHS_pm)
 End Subroutine remesh_particles_3d
 
 

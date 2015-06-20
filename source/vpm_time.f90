@@ -19,7 +19,7 @@ Subroutine convect_first_order(Xbound,Dpm,NN,NN_Bl)
 
      do i= 1,NVR
          XP(1:3,i) = XP(1:3,i)  + UP(1:3,i) * DT_c
-         QP(1:3,i) = QP(1:3,i)  + GP(1:3,i) * DT_c
+         QP(1:3,i) = QP(1:3,i) !+ GP(1:3,i) * DT_c
      enddo
 End Subroutine convect_first_order
 
@@ -106,6 +106,7 @@ Subroutine back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
         enddo
         !$omp enddo
         !$omp endparallel
+       write(*,*) maxval(UP(1,:)),minval(UP(1,:))
 
 End Subroutine back_to_particles_3D
 

@@ -40,10 +40,10 @@ Subroutine calc_velocity_serial_3d
     !$omp enddo
     !$omp endparallel
   !Sol of vorticity is no longer need thus we use it for storing deformation
-    return
+    SOL_pm=0.d0
+   !return
   !REMEMBER VORTICITY CARRIED IS -OMEGA and the quantity transferes is -OMEGA thus
   !deformation = - omega*\gradu 
-    SOL_pm=0.d0
    !$omp parallel private(i,j,k,velxp,velxm,velyp,velym,velzp,velzm,wdudx,wdvdy,wdwdz,&
    !$omp                  upi,upj,upk,vpi,vpj,vpk,umi,umj,umk,vmi,vmj,vmk,&
    !$omp                  wmi,wmj,wmk) num_threads(OMPTHREADS)
@@ -51,38 +51,38 @@ Subroutine calc_velocity_serial_3d
     do k = NZs_bl(1) + 2, NZf_bl(1) - 2
         do j = NYs_bl(1) + 2, NYf_bl(1) - 2 
            do i =  NXs_bl(1) + 2, NXf_bl(1) -2 
-                velxp = velvrx_pm(i + 1, j, k) + velphix_pm(i + 1, j, k)
-                velxm = velvrx_pm(i - 1, j, k) + velphix_pm(i - 1, j, k)
+                velxp = velvrx_pm(i + 1, j, k) 
+                velxm = velvrx_pm(i - 1, j, k) 
 
-                velyp = velvry_pm(i,j + 1, k) + velphiy_pm(i, j + 1, k)
-                velym = velvry_pm(i,j - 1, k) + velphiy_pm(i, j - 1, k)
+                velyp = velvry_pm(i,j + 1, k)
+                velym = velvry_pm(i,j - 1, k)
 
-                velzp = velvrz_pm(i,j, k + 1) + velphiz_pm(i, j, k + 1)
-                velzm = velvrz_pm(i,j, k - 1) + velphiz_pm(i, j, k - 1)
+                velzp = velvrz_pm(i,j, k + 1) 
+                velzm = velvrz_pm(i,j, k - 1)
 
-                upi = velvrx_pm(i+1,j,k) + velphix_pm(i+1,j,k)
-                upj = velvrx_pm(i,j+1,k) + velphix_pm(i,j+1,k)
-                upk = velvrx_pm(i,j,k+1) + velphix_pm(i,j,k+1)
+                upi = velvrx_pm(i+1,j,k) 
+                upj = velvrx_pm(i,j+1,k) 
+                upk = velvrx_pm(i,j,k+1) 
 
-                vpi = velvry_pm(i+1,j,k) + velphiy_pm(i+1,j,k)
-                vpj = velvry_pm(i,j+1,k) + velphiy_pm(i,j+1,k)
-                vpk = velvry_pm(i,j,k+1) + velphiy_pm(i,j,k+1)
+                vpi = velvry_pm(i+1,j,k) 
+                vpj = velvry_pm(i,j+1,k) 
+                vpk = velvry_pm(i,j,k+1) 
 
-                wpi = velvrz_pm(i+1,j,k) + velphiz_pm(i+1,j,k)
-                wpj = velvrz_pm(i,j+1,k) + velphiz_pm(i,j+1,k)
-                wpk = velvrz_pm(i,j,k+1) + velphiz_pm(i,j,k+1)
+                wpi = velvrz_pm(i+1,j,k) 
+                wpj = velvrz_pm(i,j+1,k) 
+                wpk = velvrz_pm(i,j,k+1) 
 
-                umi = velvrx_pm(i-1,j,k) + velphix_pm(i-1,j,k)
-                umj = velvrx_pm(i,j-1,k) + velphix_pm(i,j-1,k)
-                umk = velvrx_pm(i,j,k-1) + velphix_pm(i,j,k-1)
+                umi = velvrx_pm(i-1,j,k) 
+                umj = velvrx_pm(i,j-1,k) 
+                umk = velvrx_pm(i,j,k-1) 
 
-                vmi = velvry_pm(i-1,j,k) + velphiy_pm(i-1,j,k)
-                vmj = velvry_pm(i,j-1,k) + velphiy_pm(i,j-1,k)
-                vmk = velvry_pm(i,j,k-1) + velphiy_pm(i,j,k-1)
+                vmi = velvry_pm(i-1,j,k) 
+                vmj = velvry_pm(i,j-1,k) 
+                vmk = velvry_pm(i,j,k-1) 
 
-                wmi = velvrz_pm(i-1,j,k) + velphiz_pm(i-1,j,k)
-                wmj = velvrz_pm(i,j-1,k) + velphiz_pm(i,j-1,k)
-                wmk = velvrz_pm(i,j,k-1) + velphiz_pm(i,j,k-1)
+                wmi = velvrz_pm(i-1,j,k) 
+                wmj = velvrz_pm(i,j-1,k) 
+                wmk = velvrz_pm(i,j,k-1) 
 
                 wdudx  = (RHS_pm(1,i + 1,j,k) * upi - (RHS_pm(1,i - 1,j,k)) * umi)/DXpm2
                 wdvdy  = (RHS_pm(2,i,j + 1,k) * upj - (RHS_pm(2,i,j - 1,k)) * umj)/DYpm2
