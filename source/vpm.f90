@@ -64,7 +64,7 @@ Subroutine vpm_init(XP_in,QP_in,UP_in,GP_in,NVR_in,neqpm_in)
     PI   = 4.d0 * atan(1.d0)
     PI2  = 2.d0 * PI
     PI4  = 4.d0 * PI
-    DT_c=0.5d0
+    DT_c=0.2d0
   neqpm=neqpm_in
   if (my_rank.eq.0) then 
   QP=>QP_in; XP=>XP_in
@@ -134,8 +134,8 @@ End Subroutine vpm_init
   NN_tmp(1:3)     = NNbl(1:3,nb)
   NN_bl_tmp(1:6)  = NNbl_bl(1:6,nb)
   allocate(SOL_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)),RHS_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)))
-  print *, NXpm,NYpm,NZpm
   allocate(RHS_pm(4,NXpm,NYpm,NZpm))
+  if (my_rank.eq.0)write(*,*) achar(27)//'[1;31m REALTIME',NTIME,achar(27)//'[0m'
 
   if(my_rank.eq.0) then
      allocate(SOL_pm(neqpm,NXpm,NYpm,NZpm))
@@ -201,7 +201,7 @@ contains
 
                 call solget_3d(BLOCKS,NBI,NBJ,NBK,NN_tmp,NNbl,NNbl_bl,NN_bl,SOL_pm_bl)
                 if (my_rank.eq.0) call calc_velocity_serial_3d
-                call velbcast_3d
+               !call velbcast_3d
             ENDIF
             !--------------------------------------------
 

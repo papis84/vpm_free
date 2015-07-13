@@ -30,7 +30,7 @@ call define_sizes(1)
 call remesh_particles_3d(1)
 do i=1,1000
  call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,i)
- if (mod(i,4).eq.0) call remesh_particles_3d(1)
+ if (mod(i,1).eq.0) call remesh_particles_3d(1)
 enddo
 
 call MPI_FINALIZE(ierr)
