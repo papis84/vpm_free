@@ -164,7 +164,7 @@ End Subroutine vpm_init
    endif
 
   if (my_rank.eq.0) then 
-      call writesol(NTIME)
+      if(mod(NTIME,10).eq.0) call writesol(NTIME)
       call convect_first_order(Xbound,Dpm,NN,NN_bl)
   endif
 

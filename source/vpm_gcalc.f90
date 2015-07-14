@@ -41,13 +41,12 @@ Subroutine calc_velocity_serial_3d
     !$omp endparallel
   !Sol of vorticity is no longer need thus we use it for storing deformation
     SOL_pm=0.d0
-   !return
   !REMEMBER VORTICITY CARRIED IS -OMEGA and the quantity transferes is -OMEGA thus
   !deformation = - omega*\gradu 
-  !!$omp parallel private(i,j,k,velxp,velxm,velyp,velym,velzp,velzm,wdudx,wdvdy,wdwdz,&
-  !!$omp                  upi,upj,upk,vpi,vpj,vpk,umi,umj,umk,vmi,vmj,vmk,&
-  !!$omp                  wmi,wmj,wmk) num_threads(OMPTHREADS)
-  !!$omp do
+  !$omp parallel private(i,j,k,velxp,velxm,velyp,velym,velzp,velzm,wdudx,wdvdy,wdwdz,&
+  !$omp                  upi,upj,upk,vpi,vpj,vpk,wpi,wpj,wpk,umi,umj,umk,vmi,vmj,vmk,&
+  !$omp                  wmi,wmj,wmk) num_threads(OMPTHREADS)
+  !$omp do
     do k = NZs_bl(1) + 2, NZf_bl(1) - 2
         do j = NYs_bl(1) + 2, NYf_bl(1) - 2 
            do i =  NXs_bl(1) + 2, NXf_bl(1) -2 
@@ -106,7 +105,7 @@ Subroutine calc_velocity_serial_3d
             enddo
         enddo
     enddo
-   !!$omp enddo
-   !!$omp endparallel
+   !$omp enddo
+   !$omp endparallel
 
 End Subroutine calc_velocity_serial_3d
