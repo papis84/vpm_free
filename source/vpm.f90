@@ -1,6 +1,6 @@
  Module vpm_vars
     double precision, allocatable :: XP_scatt(:,:),QP_scatt(:,:)
-    double precision              :: DT_c,V_ref
+    double precision              :: DT_c,V_ref, NI
     integer ,allocatable          :: NVR_projscatt(:)
     integer                       :: interf_iproj,ncell_rem,iynhj
 
@@ -65,6 +65,7 @@ Subroutine vpm_init(XP_in,QP_in,UP_in,GP_in,NVR_in,neqpm_in)
     PI2  = 2.d0 * PI
     PI4  = 4.d0 * PI
     DT_c=0.2d0
+    NI   =  6.d-06
   neqpm=neqpm_in
   if (my_rank.eq.0) then 
   QP=>QP_in; XP=>XP_in
@@ -130,6 +131,11 @@ End Subroutine vpm_init
     call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
    
 ! if (NTIME.eq.1) call define_sizes(NTIME)
+  nullify (QP,XP,UP,GP)
+  if (my_rank.eq.0) then 
+      QP=>QP_in; XP=>XP_in
+      UP=>UP_in; GP=>GP_in
+  endif 
   nb = my_rank + 1
   NN_tmp(1:3)     = NNbl(1:3,nb)
   NN_bl_tmp(1:6)  = NNbl_bl(1:6,nb)
@@ -142,7 +148,10 @@ End Subroutine vpm_init
   endif
 
   call project_particles 
-  if(my_rank.eq.0)st=MPI_WTIME()
+  if(my_rank.eq.0)then 
+     st=MPI_WTIME()
+     call diffuse_vort_3d
+  endif 
   call rhsbcast(RHS_pm,NN,4)
         !------------------------------
   allocate(velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))

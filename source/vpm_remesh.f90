@@ -61,10 +61,10 @@ if(iflag.eq.1) then
       !deallocate(RHS_pm)
        allocate(RHS_pm(4,NXpm,NYpm,NZpm))
 
-        call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
-        NVR_p=NVR/np
+       call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+       NVR_p=NVR/np
        if (my_rank.eq.0) NVR_p = NVR_p + mod(NVR,np)
-       allocate (XP_scatt(3,NVR_p),QP_scatt(7,NVR_p),NVR_projscatt(NVR_p))
+       allocate (XP_scatt(3,NVR_p),QP_scatt(4,NVR_p),NVR_projscatt(NVR_p))
        NVR_projscatt=interf_iproj
        call particles_scat
        call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
@@ -194,7 +194,7 @@ if (my_rank.eq.0) then
    if (ncell.gt.1) call back_to_particles_3D_rem(RHS_pm,XP,QP,Xbound,Dpm,NN,NVR,2)
    if (iflag.eq.0) deallocate(RHS_pm)
 
-write(*,*) 'remesh complete',NVR,npar,DVpm
+write(*,*) 'remesh complete',NVR,npar,DVpm,maxval(QP(neqpm,:))
 endif
 !call back_to_particles_2D(4)
 

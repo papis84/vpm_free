@@ -21,7 +21,7 @@ SRCHP   = ./source
      
 DEBUG ?=0
 ifeq ($(DEBUG), 1)
-     FLAGS = -C -fpe0 -traceback -mkl -O3  -openmp
+     FLAGS = -C -fpe0 -traceback -mkl -O3  #-openmp
      EXTRA_FLAGS= -warn interfaces -warn general                   
      EXENAME=$(EXENAMEIN)_debug
      PATHOBJHP = ./debug

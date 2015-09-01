@@ -109,3 +109,54 @@ Subroutine calc_velocity_serial_3d
    !$omp endparallel
 
 End Subroutine calc_velocity_serial_3d
+
+Subroutine diffuse_vort_3d
+    use vpm_vars         
+    use pmeshpar
+    use parvar
+    use pmgrid
+    use openmpth
+    Implicit None
+    double precision ::  dwxdx, dwydy,dwzdz
+    integer          :: i, j, k
+
+
+    DXpm2 =  DXpm**2
+    DYpm2 =  DYpm**2 
+    DZpm2 =  DZpm**2
+
+    !$omp parallel private(i,j,k,dwxdx,dwydy,dwzdz) num_threads(OMPTHREADS)
+    !$omp do
+    do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
+        do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
+           do i = NXs_bl(1) + 1, NXf_bl(1) - 1
+
+                !--> Remember that RHS = -w 
+                dwxdx = (RHS_pm(1, i + 1, j, k)  - 2 * RHS_pm(1, i, j, k) &
+                         + RHS_pm(1, i - 1, j, k)) / DXpm2
+                dwydy = (RHS_pm(2, i, j + 1, k)  - 2 * RHS_pm(2, i, j, k) &
+                         + RHS_pm(2, i, j - 1, k)) / DYpm2
+                dwzdz = (RHS_pm(3, i, j, k + 1)  - 2 * RHS_pm(3, i, j, k) &
+                         + RHS_pm(3, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                SOL_pm(1,i,j,k) = (dwxdx+dwydy+dwzdz)
+            enddo
+        enddo
+    enddo
+    !$omp enddo
+    !$omp endparallel
+
+    !$omp parallel private(i,j,k) num_threads(OMPTHREADS)
+    !$omp do
+    do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
+        do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
+           do i = NXs_bl(1) + 1, NXf_bl(1) - 1
+
+                !--> Remember that RHS = -w 
+                RHS_pm(1:3, i, j, k) = RHS_pm(1:3, i, j, k) - NI * SOL_pm(1,i,j,k) 
+            enddo
+        enddo
+    enddo
+    !$omp enddo
+    !$omp endparallel
+End Subroutine diffuse_vort_3d 
