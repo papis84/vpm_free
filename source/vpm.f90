@@ -10,19 +10,19 @@
  End Module vpm_vars
  
  Module vpm_size
-    double precision :: Xbound(6),Dpm(3),Xbound0(6),Dpm0(3)
-    integer          :: NN_bl(6),NN(3),NN0_bl(6),NN0(3)
-    integer          :: NXs0_bl(10),NYs0_bl(10),NXf0_bl(10),NYf0_bl(10),NZs0_bl(10),NZf0_bl(10)
+    double precision,save :: Xbound(6),Dpm(3),Xbound0(6),Dpm0(3)
+    integer,save          :: NN_bl(6),NN(3),NN0_bl(6),NN0(3)
+    integer,save          :: NXs0_bl(10),NYs0_bl(10),NXf0_bl(10),NYf0_bl(10),NZs0_bl(10),NZf0_bl(10)
 
-    double precision,allocatable  :: Xbound_bl(:,:)
-    integer         ,allocatable  :: NNbl_bl(:,:),NNbl(:,:)
+    double precision,allocatable,save  :: Xbound_bl(:,:)
+    integer         ,allocatable,save  :: NNbl_bl(:,:),NNbl(:,:)
 
 
-    double precision              :: Xbound_tmp(6),Xbound_coarse(6),Dpm_coarse(3)
-    integer                       :: NN_tmp(3),NN_bl_tmp(6),NN_coarse(3),NN_bl_coarse(6)
-    integer                       :: nb_i,nb_j,nb_k,NBB,NXbl,NYbl,NZbl,BLOCKS,NXB,NYB,NZB,ndumcell_coarse ,ndumcell_bl
+    double precision,save              :: Xbound_tmp(6),Xbound_coarse(6),Dpm_coarse(3)
+    integer,save                       :: NN_tmp(3),NN_bl_tmp(6),NN_coarse(3),NN_bl_coarse(6)
+    integer,save                       :: nb_i,nb_j,nb_k,NBB,NXbl,NYbl,NZbl,BLOCKS,NXB,NYB,NZB,ndumcell_coarse ,ndumcell_bl
     double precision              :: starttime,endtime,st,et,ct
-    integer                       :: II,iynbc,iret,NBI,NBJ,NBK,NVR_out_thres,NREMESH,ntorder,&
+    integer,save                       :: II,iynbc,iret,NBI,NBJ,NBK,NVR_out_thres,NREMESH,ntorder,&
                                      iyntree,ilevmax,itree,nsize_out(3),ibctyp
 
  End Module vpm_size
@@ -37,64 +37,8 @@ Module vpm_lib
   
 contains
 
-Subroutine vpm_init(XP_in,QP_in,UP_in,GP_in,NVR_in,neqpm_in)
-    use vpm_vars
-    use vpm_size
-    use pmeshpar
-    use parvar
-    use pmgrid
-    use MPI
-    use pmlib
-    use projlib
-    use yapslib
-    use openmpth
-    double precision,intent(inout),target :: XP_in(:,:),QP_in(:,:),UP_in(:,:),GP_in(:,:)
-    integer,         intent(inout)        :: NVR_in
-    integer,         intent(in)           :: neqpm_in
-    integer          :: ierr,my_rank,np
-
-    call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
-    call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
-    II=1;iynhj=0
-    if (II.eq.1) then
-        call omp_set_num_threads(1)
-       !call mkl_set_num_threads(1)
-       !call mkl_domain_set_num_threads(1)
-    endif
-    PI   = 4.d0 * atan(1.d0)
-    PI2  = 2.d0 * PI
-    PI4  = 4.d0 * PI
-    DT_c=0.2d0
-    NI   =  6.d-06
-  neqpm=neqpm_in
-  if (my_rank.eq.0) then 
-  QP=>QP_in; XP=>XP_in
-  UP=>UP_in; GP=>GP_in
-  NVR = NVR_in
-  else 
-   nullify(QP)
-   nullify(XP)
-   nullify(UP)
-   nullify(GP)
-  endif
-
-  ND=3
-  open(1,file='pm.inp')
-  read(1,*) DXpm,DYpm,DZpm
-  read(1,*) interf_iproj
-  read(1,*) ibctyp
-  read(1,*) IDVPM
-  read(1,*) EPSVOL
-  read(1,*) ncoarse
-  read(1,*) NBI,NBJ,NBK
-  read(1,*) NREMESH, ncell_rem 
-  read(1,*) iyntree,ilevmax
-  read(1,*) OMPTHREADS
-  close(1)
-
-End Subroutine vpm_init
-
- Subroutine vpm(XP_in,QP_in,UP_in,GP_in,NVR_in,neqpm_in,NTIME)
+ Subroutine vpm(XP_in,QP_in,UP_in,GP_in,NVR_in,neqpm_in,WhatToDo,&
+                Xoutput,NXoutput,Voutput,NVoutput,Velx,Vely,Velz)
     use vpm_vars
     use vpm_size
     use pmeshpar
@@ -109,9 +53,11 @@ End Subroutine vpm_init
     Implicit None 
     
     double precision,intent(inout),target :: XP_in(:,:),QP_in(:,:),UP_in(:,:),GP_in(:,:)
-    integer,         intent(inout)        :: NVR_in
-    integer,         intent(in)           :: neqpm_in,NTIME
-    double precision :: a,XPM,YPM,velx,vely,totmass,totvor,MACH,error,pr
+    double precision,intent(inout),target :: Xoutput(:,:),Voutput(:,:)
+    double precision,intent(inout),target :: velx(:,:,:),vely(:,:,:),velz(:,:,:)
+    integer,         intent(inout)        :: NVR_in,NXoutput,NVoutput
+    integer,         intent(in)           :: neqpm_in,WhatToDo
+    double precision :: a,XPM,YPM,totmass,totvor,MACH,error,pr
     integer          :: i , j, k , nb, NXs,&
                          NYs, NXf, NYf, NZs,NZf,ivel,ij,iter,IPM,ialloc
     integer,allocatable :: ieq(:)
@@ -123,24 +69,65 @@ End Subroutine vpm_init
     double precision ,allocatable :: QINF(:)
     double precision,allocatable  :: SOL_pm_bl(:,:,:,:),RHS_pm_bl(:,:,:,:)
     double precision              :: Xbound_tmp(6)
-    integer                       :: NN_tmp(3),NN_bl_tmp(6)
+    integer                       :: NN_tmp(3),NN_bl_tmp(6),NTIME
          
     character *50                 :: outfil
 
     call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
     call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
-   
-! if (NTIME.eq.1) call define_sizes(NTIME)
-  nullify (QP,XP,UP,GP)
+    II=1;iynhj=0
+    if (II.eq.1) then
+        call omp_set_num_threads(1)
+       !call mkl_set_num_threads(1)
+       !call mkl_domain_set_num_threads(1)
+    endif
+    NTIME=10
+! if (    PI   = 4.d0 * atan(1.d0)
+    PI2  = 2.d0 * PI
+    PI4  = 4.d0 * PI
+    DT_c=0.2d0
+    NI   =  6.d-06
+  neqpm=neqpm_in
   if (my_rank.eq.0) then 
-      QP=>QP_in; XP=>XP_in
-      UP=>UP_in; GP=>GP_in
-  endif 
+  QP=>QP_in; XP=>XP_in
+  UP=>UP_in; GP=>GP_in
+  NVR = NVR_in
+  velvrx_pm=>velx; velvry_pm=>vely;velvrz_pm=>velz
+  else 
+   nullify(QP)
+   nullify(XP)
+   nullify(UP)
+   nullify(GP)
+   nullify(velvrx_pm); nullify(velvry_pm); nullify(velvrz_pm)
+  endif
+  
+
+     
+
+
   nb = my_rank + 1
+  
+  if (WhatToDo.eq.0) then 
+      ND=3
+      open(1,file='pm.inp')
+      read(1,*) DXpm,DYpm,DZpm
+      read(1,*) interf_iproj
+      read(1,*) ibctyp
+      read(1,*) IDVPM
+      read(1,*) EPSVOL
+      read(1,*) ncoarse
+      read(1,*) NBI,NBJ,NBK
+      read(1,*) NREMESH, ncell_rem 
+      read(1,*) iyntree,ilevmax
+      read(1,*) OMPTHREADS
+      close(1)
+      call define_sizes
+      return
+  endif
   NN_tmp(1:3)     = NNbl(1:3,nb)
   NN_bl_tmp(1:6)  = NNbl_bl(1:6,nb)
   allocate(SOL_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)),RHS_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)))
-  allocate(RHS_pm(4,NXpm,NYpm,NZpm))
+  allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
   if (my_rank.eq.0)write(*,*) achar(27)//'[1;31m REALTIME',NTIME,achar(27)//'[0m'
 
   if(my_rank.eq.0) then
@@ -152,7 +139,7 @@ End Subroutine vpm_init
      st=MPI_WTIME()
      call diffuse_vort_3d
   endif 
-  call rhsbcast(RHS_pm,NN,4)
+  call rhsbcast(RHS_pm,NN,neqpm+1)
         !------------------------------
   allocate(velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
   IF (II.ne.0) then
@@ -221,21 +208,23 @@ contains
             call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
             NVR_p=NVR/np
             if (my_rank.eq.0) NVR_p = NVR_p + mod(NVR,np)
-            allocate (XP_scatt(3,NVR_p),QP_scatt(4,NVR_p),NVR_projscatt(NVR_p))
+            allocate (XP_scatt(3,NVR_p),QP_scatt(neqpm+1,NVR_p),NVR_projscatt(NVR_p))
             NVR_projscatt=interf_iproj
             call particles_scat
             call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
             if(my_rank.eq.0) call omp_set_num_threads(1)
                 st=MPI_WTIME()
-                allocate(ieq(4),QINF(4))
-                QINF(1)=0.d0;QINF(2)=0.d0;QINF(3)=0.d0;QINF(4)=0!DVpm 
-                ieq(1)=1;ieq(2)=2;ieq(3)=3;ieq(4)=4
-                call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,4,ieq,4,QINF)
+                allocate(ieq(neqpm+1),QINF(neqpm+1))
+                QINF=0.d0
+                do i=1,neqpm+1
+                   ieq(i)=i
+                enddo
+                call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,neqpm+1,ieq,neqpm+1,QINF)
                 call proj_gath(NN)
                 if (my_rank.eq.0) then 
-                    RHS_pm(4,:,:,:)= RHS_pm(4,:,:,:) !+ DVpm
+                    RHS_pm(neqpm+1,:,:,:)= RHS_pm(neqpm+1,:,:,:) !+ DVpm
                     call omp_set_num_threads(OMPTHREADS)
-                    call project_vol3d(RHS_pm,4,ieq,4,IDVPM)
+                    call project_vol3d(RHS_pm,neqpm+1,ieq,neqpm+1,IDVPM)
                     et=MPI_WTIME()
                     write(*,*) 'Proj',int((et-st)/60),'m',mod(et-st,60.d0),'s'
                     call omp_set_num_threads(1)
@@ -247,7 +236,7 @@ contains
 
 End Subroutine vpm
 
-Subroutine define_sizes(NTIME)
+Subroutine define_sizes
   use vpm_vars        
   use vpm_size
   use pmlib
@@ -255,7 +244,6 @@ Subroutine define_sizes(NTIME)
   use parvar
   use pmgrid
   use MPI
-  integer, intent(in) ::NTIME
   integer    :: nsiz(3),nsiz_bl(3)
 
   integer    :: i,j,k,np,my_rank,ierr,nb
@@ -320,7 +308,9 @@ Subroutine define_sizes(NTIME)
 !so as to have the coarse information at the boundaries exactly.
             ndumcell_bl= 4
             nsiz_bl=max(2**ilevmax,ncoarse)!ndumcell_coarse!*2*2**ilevmax
-            if (NTIME.eq.1) allocate (Xbound_bl(6,BLOCKS),NNbl(3,BLOCKS),NNbl_bl(6,BLOCKS))
+              if (.not. allocated(XBound_bl)) then 
+                  allocate (Xbound_bl(6,BLOCKS),NNbl(3,BLOCKS),NNbl_bl(6,BLOCKS))
+              endif
                  NXB   = int(nint(((Xbound (4)-Xbound (1))/Dpm (1))))
                  NYB   = int(nint(((Xbound (5)-Xbound (2))/Dpm (2))))
                  NZB   = int(nint(((Xbound (6)-Xbound (3))/Dpm (3))))
@@ -401,7 +391,7 @@ Subroutine writesol(NTIME)
     
     character*50        :: filout
     integer           :: i,j,k,NTIME
-    double precision  :: XPM,YPM,ZPM,velx,vely,velz
+    double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz
     
          
         write(filout,'(i5.5,a)') NTIME,'solution.dat'
@@ -420,11 +410,12 @@ Subroutine writesol(NTIME)
                     ZPM=ZMIN_pm+(K-1)*DZpm
                     !velx = VelphiX_pm(i,j,1) + VelvrX_pm(i,j,1)
                     !vely = VelphiY_pm(i,j,1) + VelvrY_pm(i,j,1)
-                    velx = VelvrX_pm(i,j,k)
-                    vely = VelvrY_pm(i,j,k)
-                    velz = VelvrZ_pm(i,j,k)
+                    velocx = VelvrX_pm(i,j,k)
+                    velocy = VelvrY_pm(i,j,k)
+                    velocz = VelvrZ_pm(i,j,k)
 
-                    WRITE(1,'(16(e28.17,1x))')XPM,YPM,ZPM,velx,vely,velz,-RHS_pm(1,I,J,K),-RHS_pm(2,I,J,K),&
+                    WRITE(1,'(16(e28.17,1x))')XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
+                                             -RHS_pm(2,I,J,K),&
                                              -RHS_pm(3,I,J,K),RHS_pm(4,I,J,K),SOL_pm(1,I,J,K),SOL_pm(2,I,J,K),&
                                               SOL_pm(3,I,J,K)
 

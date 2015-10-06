@@ -1,11 +1,12 @@
+
 Program test_pm
 use vpm_lib
 use vpm_size
 use test_mod
 use MPI
-double precision ::Vref
+double precision :: Vref
+integer          :: Noutput, NDimoutput
 integer :: my_rank,np,ierr,i
-
 call MPI_INIT(ierr)
 call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
 call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
@@ -24,12 +25,14 @@ if (my_rank.eq.0) then
 
 QPR(1:3,:) = -QPR(1:3,:) * Vref
 QPR(4,:) =Vref
+
 endif
-call vpm_init(XPR,QPR,UPR,GPR,NVR_ext,3)
-call define_sizes(1)
-call remesh_particles_3d(1)
+
+!-Iwhattodo
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,Xoutput,Noutput,Voutput,NDimoutput,velx,vely,velz)
+ call remesh_particles_3d(1)
 do i=1,1000
-  call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,i)
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,2,Xoutput,Noutput,Voutput,NDimoutput,velx,vely,velz)
   if (mod(i,1).eq.0) call remesh_particles_3d(1)
 enddo
 

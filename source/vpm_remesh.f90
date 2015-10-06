@@ -2,10 +2,6 @@
 !This Subroutine remeshes particles  on the pm grid (4 particles per cell)
 !---------------------------------------------------------------------------------------------------
 
-Module test_mod
-double precision,allocatable,target:: XPR(:,:),QPR(:,:),UPR(:,:),GPR(:,:)
-integer :: NVR_ext
-end Module test_mod
 Subroutine remesh_particles_3d(iflag)
  use vpm_vars
  use pmeshpar
@@ -59,47 +55,33 @@ DVpm = DXvr * DYvr  * DZvr
  QP=>QPR
 if(iflag.eq.1) then
       !deallocate(RHS_pm)
-       allocate(RHS_pm(4,NXpm,NYpm,NZpm))
+       allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
 
        call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
        NVR_p=NVR/np
        if (my_rank.eq.0) NVR_p = NVR_p + mod(NVR,np)
-       allocate (XP_scatt(3,NVR_p),QP_scatt(4,NVR_p),NVR_projscatt(NVR_p))
+       allocate (XP_scatt(3,NVR_p),QP_scatt(neqpm+1,NVR_p),NVR_projscatt(NVR_p))
        NVR_projscatt=interf_iproj
        call particles_scat
        call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
-       allocate(ieq(4),QINF(4))
-       QINF(1)=0.d0;QINF(2)=0.d0;QINF(3)=0.d0;QINF(4)=0.d0
-       ieq(1)=1;ieq(2)=2;ieq(3)=3;ieq(4)=4
-       call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,4,ieq,4,QINF)
+       allocate(ieq(neqpm+1),QINF(neqpm+1))
+       QINF=0.d0
+       do i=1,neqpm+1
+          ieq(i)=i
+       enddo
+       call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,neqpm+1,ieq,neqpm+1,QINF)
        call MPI_BARRIER(MPI_COMM_WORLD,ierr)
        call proj_gath(NN)
        deallocate(XP_scatt,QP_scatt,NVR_projscatt)
 
        if (my_rank.eq.0) then 
            call omp_set_num_threads(OMPTHREADS)
-           RHS_pm(4,:,:,:)=DVpm
-           call project_vol3d(RHS_pm,4,ieq,4,IDVPM)
+           RHS_pm(neqpm+1,:,:,:)=DVpm
+           call project_vol3d(RHS_pm,neqpm+1,ieq,neqpm+1,IDVPM)
            call omp_set_num_threads(1)
        endif
 
        deallocate(ieq,QINF)
-else 
-    if (my_rank.eq.0) then 
-       write(*,*) 'needs tests'
-       stop
-       allocate(RHS_pm(4,NXpm,NYpm,NZpm))
-       allocate(ieq(4),QINF(4))
-
-
-       QINF(1)=0.d0;QINF(2)=0.d0;QINF(3)=0.d0;QINF(4)=0.d0
-       ieq(1)=1;ieq(2)=2;ieq(3)=3;ieq(4)=4
-       call project_particles_3D(RHS_pm,QP,XP,NVR_projtype,NVR,4,ieq,4,QINF)
-       RHS_pm(4,:,:,:)=DVpm
-       call project_vol3d(RHS_pm,4,ieq,4,0)
-     
-!      call hill_assign(NN,NN_bl,Xbound,Dpm,RHS_pm)
-   endif
 endif
 
 if (my_rank.eq.0) then 
@@ -120,7 +102,7 @@ if (my_rank.eq.0) then
     NYpm1   = nyfin - nystart + 1
     NZpm1   = nzfin - nzstart + 1
     NVR       =  NXpm1*NYpm1*NZpm1*ncell
-    allocate(XPR(3,NVR),QPR(4,NVR))
+    allocate(XPR(3,NVR),QPR(neqpm+1,NVR))
     XP=>XPR
     QP=>QPR
     XP=0

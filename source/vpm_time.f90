@@ -37,9 +37,9 @@ Subroutine back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
     use openmpth
     Implicit None
     integer, intent(in)             :: NN(3),NVR,iproj,NN_bl(6),neqpm
-    double precision, intent(in)    :: RHS_pm(4,NN(1),NN(2),NN(3))
+    double precision, intent(in)    :: RHS_pm(neqpm+1,NN(1),NN(2),NN(3))
     double precision, intent(in)    :: SOL_pm(neqpm,NN(1),NN(2),NN(3))
-    double precision, intent(inout) :: QP(4,NVR),XP(3,NVR),UP(3,NVR),GP(3,NVR)
+    double precision, intent(inout) :: QP(neqpm+1,NVR),XP(3,NVR),UP(3,NVR),GP(3,NVR)
     double precision, intent(in)    :: velvrx_pm(NN(1),NN(2),NN(3)),velvry_pm(NN(1),NN(2),NN(3))
     double precision, intent(in)    :: velvrz_pm(NN(1),NN(2),NN(3))
 
@@ -101,8 +101,8 @@ Subroutine back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
                 enddo
             enddo
 
-            QP(1:3,nv)  = QP(1:3,nv) * QP(4,nv)
-            GP(1:3,nv)  = GP(1:3,nv)*QP(4,nv)
+            QP(1:3,nv)  = QP(1:3,nv) * QP(neqpm+1,nv)
+            GP(1:3,nv)  = GP(1:3,nv)*QP(neqpm+1,nv)
         enddo
         !$omp enddo
         !$omp endparallel

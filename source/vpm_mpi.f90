@@ -357,7 +357,7 @@ Subroutine particles_scat
 
     if (my_rank.eq.0) then 
         XP_scatt(1:3,1:NVR_p)= XP(1:3,1:NVR_p)
-        QP_scatt(1:3,1:NVR_p)= QP(1:4,1:NVR_p)
+        QP_scatt(1:neqpm+1,1:NVR_p)= QP(1:neqpm+1,1:NVR_p)
         NVR_pr = NVR_p
         NVR_r  = NVR/np
         do i=2,np
@@ -366,7 +366,7 @@ Subroutine particles_scat
            call MPI_SEND(XP,1,mat2,dest,1,MPI_COMM_WORLD,ierr)
            call MPI_TYPE_FREE(mat2,ierr)
        
-           call mpimat2_pm(mat2,4,NVR,4,NVR_r,NVR_pr)
+           call mpimat2_pm(mat2,neqpm+1,NVR,neqpm+1,NVR_r,NVR_pr)
            call MPI_SEND(QP,1,mat2,dest,1,MPI_COMM_WORLD,ierr)
            call MPI_TYPE_FREE(mat2,ierr)
            NVR_pr=NVR_pr+NVR_r
@@ -376,7 +376,7 @@ Subroutine particles_scat
         call MPI_RECV(XP_scatt,1,mat2,0,1,MPI_COMM_WORLD,status,ierr)
         call MPI_TYPE_FREE(mat2,ierr)
 
-        call mpimat2_pm(mat2,4,NVR_p,4,NVR_p,0)
+        call mpimat2_pm(mat2,neqpm+1,NVR_p,neqpm+1,NVR_p,0)
         call MPI_RECV(QP_scatt,1,mat2,0,1,MPI_COMM_WORLD,status,ierr)
         call MPI_TYPE_FREE(mat2,ierr)
     endif
@@ -399,10 +399,10 @@ Subroutine proj_gath(NN)
     
 
     if (my_rank.eq.0) then 
-      allocate (RHS_pm_tmp(4,NN(1),NN(2),NN(3)))
+      allocate (RHS_pm_tmp(neqpm+1,NN(1),NN(2),NN(3)))
       do i=2,np
          source =i-1
-         call mpimat4(mat4,4,NN(1),NN(2),NN(3))
+         call mpimat4(mat4,neqpm+1,NN(1),NN(2),NN(3))
          call MPI_RECV(RHS_pm_tmp,1,mat4,source,1,MPI_COMM_WORLD,status,ierr)
          call MPI_TYPE_FREE(mat4,ierr)
          RHS_pm=RHS_pm + RHS_pm_tmp
@@ -410,7 +410,7 @@ Subroutine proj_gath(NN)
       deallocate(RHS_pm_tmp)
     else
         dest=0
-        call mpimat4(mat4,4,NN(1),NN(2),NN(3))
+        call mpimat4(mat4,neqpm+1,NN(1),NN(2),NN(3))
         call MPI_SEND(RHS_pm,1,mat4,dest,1,MPI_COMM_WORLD,ierr)
         call MPI_TYPE_FREE(mat4,ierr)
     endif
