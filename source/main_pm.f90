@@ -14,7 +14,7 @@ end module pmeshpar
 module pmgrid
     double precision, allocatable,save   :: velx_pm(:,:,:), vely_pm(:,:,:),velz_pm(:,:,:),qx_pm(:,:,:), qy_pm(:,:,:)
     double precision, allocatable,save   :: velphix_pm(:,:,:),velphiy_pm(:,:,:),velphiz_pm(:,:,:)
-    double precision,allocatable, save   :: SOL_pm(:,:,:,:), RHS_pm(:,:,:,:),SOL_0_pm(:,:,:,:)
+    double precision,allocatable, save   :: SOL_pm(:,:,:,:),SOL_0_pm(:,:,:,:)
     double precision,allocatable,save    :: source_bound(:,:),x_s(:,:),y_s(:,:),z_s(:,:),d_s(:),cos_s(:),sin_s(:)
     double precision,allocatable,save    :: source_bound_lev(:,:,:),xs_lev(:,:,:),ys_lev(:,:,:),zs_lev(:,:,:),ds_lev(:,:,:)
     integer         ,allocatable,save    :: nbound_lev(:)
@@ -22,7 +22,8 @@ module pmgrid
     double precision, allocatable,save   :: Cont_pm(:,:)
     integer                              :: levmax
 
-    double precision, pointer,save       :: velvrx_pm(:,:,:),velvry_pm(:,:,:),velvrz_pm(:,:,:)
+    double precision,allocatable,target,save       :: velvrx_pm(:,:,:),velvry_pm(:,:,:),velvrz_pm(:,:,:)
+    double precision,allocatable, target,save       :: RHS_pm(:,:,:,:)
 end module pmgrid
 !     QP
 !   -->1 Vorticity X

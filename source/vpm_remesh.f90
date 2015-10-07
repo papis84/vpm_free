@@ -54,9 +54,12 @@ DVpm = DXvr * DYvr  * DZvr
  XP=>XPR
  QP=>QPR
 if(iflag.eq.1) then
-      !deallocate(RHS_pm)
-       allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
-
+       if (allocated(RHS_pm)) then 
+           deallocate(RHS_pm)
+           allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+       else
+           allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+       endif
        call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
        NVR_p=NVR/np
        if (my_rank.eq.0) NVR_p = NVR_p + mod(NVR,np)

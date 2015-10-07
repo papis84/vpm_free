@@ -38,7 +38,7 @@ Module vpm_lib
 contains
 
  Subroutine vpm(XP_in,QP_in,UP_in,GP_in,NVR_in,neqpm_in,WhatToDo,&
-                Xoutput,NXoutput,Voutput,NVoutput,Velx,Vely,Velz)
+                RHS_pm_in,Velx,Vely,Velz)
     use vpm_vars
     use vpm_size
     use pmeshpar
@@ -53,9 +53,9 @@ contains
     Implicit None 
     
     double precision,intent(inout),target :: XP_in(:,:),QP_in(:,:),UP_in(:,:),GP_in(:,:)
-    double precision,intent(inout),target :: Xoutput(:,:),Voutput(:,:)
-    double precision,intent(inout),target :: velx(:,:,:),vely(:,:,:),velz(:,:,:)
-    integer,         intent(inout)        :: NVR_in,NXoutput,NVoutput
+    double precision,intent(inout),pointer :: RHS_pm_in(:,:,:,:)
+    double precision,intent(inout),pointer :: velx(:,:,:),vely(:,:,:),velz(:,:,:)
+    integer,         intent(inout)        :: NVR_in
     integer,         intent(in)           :: neqpm_in,WhatToDo
     double precision :: a,XPM,YPM,totmass,totvor,MACH,error,pr
     integer          :: i , j, k , nb, NXs,&
@@ -92,13 +92,15 @@ contains
   QP=>QP_in; XP=>XP_in
   UP=>UP_in; GP=>GP_in
   NVR = NVR_in
-  velvrx_pm=>velx; velvry_pm=>vely;velvrz_pm=>velz
+ !velvrx_pm=>velx; velvry_pm=>vely;velvrz_pm=>velz
+ !RHS_pm=>RHS_pm_in
+   
   else 
    nullify(QP)
    nullify(XP)
    nullify(UP)
    nullify(GP)
-   nullify(velvrx_pm); nullify(velvry_pm); nullify(velvrz_pm)
+  !nullify(velvrx_pm); nullify(velvry_pm); nullify(velvrz_pm)
   endif
   
 
@@ -127,11 +129,22 @@ contains
   NN_tmp(1:3)     = NNbl(1:3,nb)
   NN_bl_tmp(1:6)  = NNbl_bl(1:6,nb)
   allocate(SOL_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)),RHS_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)))
-  allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+  if (allocated(RHS_pm)) then 
+      deallocate(RHS_pm)
+      allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+  else 
+      allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+  endif
   if (my_rank.eq.0)write(*,*) achar(27)//'[1;31m REALTIME',NTIME,achar(27)//'[0m'
-
+  
+ 
   if(my_rank.eq.0) then
-     allocate(SOL_pm(neqpm,NXpm,NYpm,NZpm))
+     if (allocated(SOL_pm)) then 
+         deallocate(SOL_pm)
+         allocate(SOL_pm(neqpm,NXpm,NYpm,NZpm))
+     else
+         allocate(SOL_pm(neqpm,NXpm,NYpm,NZpm))
+     endif
   endif
 
   call project_particles 
@@ -163,7 +176,10 @@ contains
       if(mod(NTIME,10).eq.0) call writesol(NTIME)
       call convect_first_order(Xbound,Dpm,NN,NN_bl)
   endif
-
+  if (WhatToDo.eq.2) then 
+     RHS_pm_in=>RHS_pm
+     return
+  endif
   deallocate(Velvrx_pm,Velvry_pm,Velvrz_pm)
   deallocate(RHS_pm,SOL_pm_bl,RHS_pm_bl)
   if (my_rank.eq.0) deallocate(SOL_pm)

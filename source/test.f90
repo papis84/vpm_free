@@ -29,10 +29,11 @@ QPR(4,:) =Vref
 endif
 
 !-Iwhattodo
- call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,Xoutput,Noutput,Voutput,NDimoutput,velx,vely,velz)
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,RHS_pm_in,velx,vely,velz)
  call remesh_particles_3d(1)
 do i=1,1000
- call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,2,Xoutput,Noutput,Voutput,NDimoutput,velx,vely,velz)
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,2,RHS_pm_in,velx,vely,velz)
+  write(*,*) maxval(RHS_pm_in)
   if (mod(i,1).eq.0) call remesh_particles_3d(1)
 enddo
 
