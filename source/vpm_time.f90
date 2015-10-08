@@ -13,10 +13,7 @@ Subroutine convect_first_order(Xbound,Dpm,NN,NN_Bl)
     integer         ,allocatable :: ieq(:)
     integer                      :: i
 
-    call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
-                              velvrx_pm,velvry_pm,velvrz_pm,&
-                              Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj)
-
+   
      do i= 1,NVR
          XP(1:3,i) = XP(1:3,i)  + UP(1:3,i) * DT_c
          QP(1:3,i) = QP(1:3,i)  + GP(1:3,i) * DT_c

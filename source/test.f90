@@ -3,16 +3,20 @@ Program test_pm
 use vpm_lib
 use vpm_size
 use test_mod
+use pmeshpar
+use parvar
+use pmgrid
 use MPI
 double precision :: Vref
+double precision,allocatable ::velsavex(:,:,:)
+double precision,allocatable ::XPDUM(:,:),QPDUM(:,:)
 integer          :: Noutput, NDimoutput
 integer :: my_rank,np,ierr,i
+
 call MPI_INIT(ierr)
 call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
 call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
-
-
-if (my_rank.eq.0) then 
+ if (my_rank.eq.0) then 
     open(1,file='part10M.dat',form='unformatted')
     read(1) NVR_ext
     read(1) Vref
@@ -26,16 +30,25 @@ if (my_rank.eq.0) then
 QPR(1:3,:) = -QPR(1:3,:) * Vref
 QPR(4,:) =Vref
 
-endif
+ endif
 
 !-Iwhattodo
  call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,RHS_pm_in,velx,vely,velz)
  call remesh_particles_3d(1)
-do i=1,1000
- call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,2,RHS_pm_in,velx,vely,velz)
-  write(*,*) maxval(RHS_pm_in)
+  allocate(velsavex(NXpm,NYpm,NZpm))
+do i=1,1
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,1,RHS_pm_in,velx,vely,velz)
   if (mod(i,1).eq.0) call remesh_particles_3d(1)
 enddo
 
+if (my_rank.eq.0) then 
+allocate (QPDUM(7,NVR_ext),XPDUM(3,NVr_ext))
+XPDUM =XPR
+QPDUM(1:3,:)=QPR(1:3,:)
+QPDUM(4:6,:)=QPR(1:3,:)
+QPDUM(7,:)  =QPR(4,:)
+endif
+ call vpm(XPDUM,QPDUM,UPR,GPR,NVR_ext,6,1,RHS_pm_in,velx,vely,velz)
+  if (mod(i,1).eq.0) call remesh_particles_3d(1)
 call MPI_FINALIZE(ierr)
 End Program test_pm
