@@ -10,8 +10,8 @@ FLAGS   =
 #FLAGS  =-autodouble
 LIBS   = 
 #EXTRA_FLAGS=-fpe0       
-OBJSMOD  = vpm.o pmlib.o pmproject.o yaps.o
-OBJSHP   =  main_pm.o testmod.o mkl_dfti.o pmlib.o pmproject.o libpm.o yaps.o vpm.o vpm_mpi.o vpm_time.o vpm_gcalc.o vpm_remesh.o test.o
+OBJSM  = vpm.o pmlib.o pmproject.o yaps.o
+OBJSHP   = testmod.o mkl_dfti.o main_pm.o pmlib.o pmproject.o libpm.o yaps.o vpm.o vpm_mpi.o vpm_time.o vpm_gcalc.o vpm_remesh.o test.o
 OBJS     = $(OBJSHP) 
 #OBJSPS   = yaps.o
 EXENAMEIN = vpm
@@ -20,24 +20,28 @@ SRCHP   = ./source
      
      
 DEBUG ?=0
-ifeq ($(DEBUG), 1)
+ifeq ($(debug), 1)
      FLAGS = -C -fpe0 -traceback -mkl -O3  #-openmp
      EXTRA_FLAGS= -warn interfaces -warn general                   
      EXENAME=$(EXENAMEIN)_debug
      PATHOBJHP = ./debug
+     VPATH = ./debug
 else
      PATHOBJHP = ./release
      EXENAME=$(EXENAMEIN)
      FLAGS =-mkl -O3 -openmp -warn all -diag-disable id,7712 
      EXTRA_FLAGS= #-warn interfaces -warn general
+     VPATH = ./release
 endif
 #
 #
-$(EXENAME): $(OBJS) 
-	    $(COMP) -module $(MODPATH) $(patsubst %.o,$(PATHOBJHP)/%.o, $(OBJSHP)) $(FLAGS) $(EXTRA_FLAGS)  $(LIBS)  -o $(EXENAME)
+$(EXENAME): $(OBJSHP) 
+	 $(COMP) $(patsubst %.o,$(PATHOBJHP)/%.o, $(OBJSHP))  -module $(MODPATH)  $(FLAGS) $(EXTRA_FLAGS) $(LIBS)  -o $(EXENAME)
 
 #
 
+main_pm.o: $(SRCHP)/main_pm.f90               Makefile
+	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
 #
 test.o: $(SRCHP)/test.f90 	
 	$(COMP)  $(FLAGS) $(EXTRA_FLAGS)  -c -module $(MODPATH) $< -o $(PATHOBJHP)/$@
@@ -63,36 +67,18 @@ vpm_time.o: $(SRCHP)/vpm_time.f90
 yaps.o: $(SRCHP)/yaps.f90  $(SRCHP)/yaps2d.f90 $(SRCHP)/yaps3d.f90 Makefile
 	$(COMP)  $(FLAGS) $(EXTRA_FLAGS)  -c -module $(MODPATH) $< -o $(PATHOBJHP)/$@
 #
-main_pm.o: $(SRCHP)/main_pm.f90               Makefile
-	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
-#
 pmlib.o: $(SRCHP)/pmlib.f90  $(SRCHP)/pmbound.f90 $(SRCHP)/pinfdomain.f90 $(SRCHP)/pmsolve.f90  Makefile
 	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
 #
 pmproject.o: $(SRCHP)/pmproject.f90 $(SRCHP)/main_pm.f90  Makefile
-	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c  -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
-#
-pmesh.o: $(SRCHP)/pmesh.f90                  $(SRCHP)/main_pm.f90  Makefile
 	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
 #
-pmbound.o: $(SRCHP)/pmbound.f90 $(SRCHP)/main_pm.f90  Makefile
+mkl_dfti.o: $(SRCHP)/mkl_dfti.f90 #              Makefile
 	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
-#
-pmsolve.o: $(SRCHP)/pmsolve.f90 $(SRCHP)/main_pm.f90  Makefile
-	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c  -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
-#
-pmgcalc.o: $(SRCHP)/pmgcalc.f90    $(SRCHP)/main_pm.f90  Makefile
-	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c  -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
-#
-pinfdomain.o: $(SRCHP)/pinfdomain.f90  $(SRCHP)/main_pm.f90  Makefile
-	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
+
 #
 libpm.o: $(SRCHP)/libpm.f90                            
 	$(COMP)  -c -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
-#
-mkl_dfti.o: $(SRCHP)/mkl_dfti.f90               Makefile
-	$(COMP)  $(FLAGS) $(EXTRA_FLAGS) -c -module  $(MODPATH) $< -o $(PATHOBJHP)/$@
-
 
 clean :
 	rm -rf $(EXENAME) $(PATHOBJNS)/*.o $(PATHOBJNS)/*.mod *.o $(MODPATH)/*.mod $(PATHOBJPS)/*.mod $(PATHOBJHP)/*.mod $(PATHOBJHP)/*.o

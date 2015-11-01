@@ -13,16 +13,12 @@ Subroutine calc_velocity_serial_3d(idcalc)
     double precision ::  wpi,wmi,wpj,wmj,wpk,wmk
     integer          :: i, j, k
 
-
+  if (idcalc.ge.0) then 
     DXpm2 = 2 * DXpm
     DYpm2 = 2 * DYpm
     DZpm2 = 2 * DZpm
-
-    velvrx_pm=0
-    velvry_pm=0
-    velvrz_pm=0
-    !$omp parallel private(i,j,k,dphidx,dphidy,dphidz,dpsidx,dpsidy,dpsidz) num_threads(OMPTHREADS)
-    !$omp do
+   !!$omp parallel private(i,j,k,dphidx,dphidy,dphidz,dpsidx,dpsidy,dpsidz) num_threads(OMPTHREADS)
+   !!$omp do
     do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
         do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
            do i = NXs_bl(1) + 1, NXf_bl(1) - 1
@@ -32,14 +28,41 @@ Subroutine calc_velocity_serial_3d(idcalc)
                 dpsidy(1:3) = (SOL_pm(1:3,i, j + 1, k)  - SOL_pm(1:3,i, j - 1, k)) / DYpm2
                 dpsidz(1:3) = (SOL_pm(1:3,i, j, k + 1)  - SOL_pm(1:3,i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                velvrx_pm(i, j, k)  = +  dpsidy(3) - dpsidz(2)
-                velvry_pm(i, j, k)  = - (dpsidx(3) - dpsidz(1))
-                velvrz_pm(i, j, k)  = +  dpsidx(2) - dpsidy(1)
+                velvrx_pm(i, j, k)  = velvrx_pm(i, j, k) +  dpsidy(3) - dpsidz(2)
+                velvry_pm(i, j, k)  = velvry_pm(i, j, k) - (dpsidx(3) - dpsidz(1))
+                velvrz_pm(i, j, k)  = velvrz_pm(i, j, k) +  dpsidx(2) - dpsidy(1)
+
+               !velvrx_pm(i, j, k)  =  +  dpsidy(3) - dpsidz(2)
+               !velvry_pm(i, j, k)  =  - (dpsidx(3) - dpsidz(1))
+               !velvrz_pm(i, j, k)  =  +  dpsidx(2) - dpsidy(1)
             enddo
         enddo
     enddo
-    !$omp enddo
-    !$omp endparallel
+   !!$omp enddo
+   !!$omp endparallel
+
+!if (neqpm.gt.5) then 
+!   !$omp parallel private(i,j,k,dphidx,dphidy,dphidz,dpsidx,dpsidy,dpsidz) num_threads(OMPTHREADS)
+!   !$omp do
+!   do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
+!       do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
+!          do i = NXs_bl(1) + 1, NXf_bl(1) - 1
+
+!               !--> dpsi(x,y,z)d(xyz)
+!               dpsidx(1) = (SOL_pm(4,i + 1, j, k)  - SOL_pm(4,i - 1, j, k)) / DXpm2
+!               dpsidy(1) = (SOL_pm(4,i, j + 1, k)  - SOL_pm(4,i, j - 1, k)) / DYpm2
+!               dpsidz(1) = (SOL_pm(4,i, j, k + 1)  - SOL_pm(4,i, j, k - 1)) / DZpm2
+!               ! U = grad x psi
+!               velvrx_pm(i, j, k)  = velvrx_pm(i, j, k) + dpsidx(1)
+!               velvry_pm(i, j, k)  = velvry_pm(i, j, k) + dpsidy(1)
+!               velvrz_pm(i, j, k)  = velvrz_pm(i, j, k) + dpsidz(1)
+!           enddo
+!       enddo
+!   enddo
+!   !$omp enddo
+!   !$omp endparallel
+!endif
+endif!
   !Sol of vorticity is no longer need thus we use it for storing deformation
    if (idcalc.eq.0) return
     SOL_pm=0.d0

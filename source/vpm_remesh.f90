@@ -72,7 +72,7 @@ if(iflag.eq.1) then
        do i=1,neqpm+1
           ieq(i)=i
        enddo
-       call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,neqpm+1,ieq,neqpm+1,QINF)
+       call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,neqpm+1,ieq,neqpm+1,QINF,NVR)
        call MPI_BARRIER(MPI_COMM_WORLD,ierr)
        call proj_gath(NN)
        deallocate(XP_scatt,QP_scatt,NVR_projscatt)

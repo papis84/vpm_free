@@ -992,7 +992,7 @@ Subroutine build_level_nbound_3d(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                             !sources at points
                             !leafcount = leafacc + (k - NZs  +im + (m-1)) * NNY + (i - NXs +1+ il +(l-1))
                             !sources at cells
-                            leafcount = leafacc + (k - NZs -1 +im + (m-1)) * NNY + (i - NXs + il +(l-1))
+                            leafcount = leafacc + (k - NZs -1 +im + (m-1)) * NNX + (i - NXs + il +(l-1))
                             x  = xs_tmp(leafcount,1)
                             y  = xs_tmp(leafcount,2)
                             z  = xs_tmp(leafcount,3)
@@ -1048,7 +1048,7 @@ Subroutine build_level_nbound_3d(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                            !sources at points
                            !leafcount = leafacc + (k - NZs  +im + (m-1)) * NNY + (i - NXs +1+ il +(l-1))
                            !sources at cells
-                           leafcount = leafacc + (k - NZs -1 +im + (m-1)) * NNY + (i - NXs + il +(l-1))
+                           leafcount = leafacc + (k - NZs -1 +im + (m-1)) * NNX + (i - NXs + il +(l-1))
                            x  = xs_tmp(leafcount,1)
                            y  = xs_tmp(leafcount,2)
                            z  = xs_tmp(leafcount,3)

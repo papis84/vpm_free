@@ -1,10 +1,7 @@
 
 Program test_pm
 use vpm_lib
-use vpm_size
 use test_mod
-use pmeshpar
-use parvar
 use pmgrid
 use MPI
 double precision :: Vref
@@ -33,11 +30,14 @@ QPR(4,:) =Vref
  endif
 
 !-Iwhattodo
- call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,RHS_pm_in,velx,vely,velz)
- call remesh_particles_3d(1)
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,RHS_pm_in,velx,vely,velz,0,NVR_ext)
+!call remesh_particles_3d(1)
   allocate(velsavex(NXpm,NYpm,NZpm))
 do i=1,1
- call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,1,RHS_pm_in,velx,vely,velz)
+  print *, 'Vor before',QPR(1,1)
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,1,RHS_pm_in,velx,vely,velz,i,NVR_ext)
+  print *, 'Vor After',QPR(1,1)
+  read(*,*)
   if (mod(i,1).eq.0) call remesh_particles_3d(1)
 enddo
 
@@ -48,7 +48,7 @@ QPDUM(1:3,:)=QPR(1:3,:)
 QPDUM(4:6,:)=QPR(1:3,:)
 QPDUM(7,:)  =QPR(4,:)
 endif
- call vpm(XPDUM,QPDUM,UPR,GPR,NVR_ext,6,1,RHS_pm_in,velx,vely,velz)
+ call vpm(XPDUM,QPDUM,UPR,GPR,NVR_ext,6,1,RHS_pm_in,velx,vely,velz,i,NVR_ext)
   if (mod(i,1).eq.0) call remesh_particles_3d(1)
 call MPI_FINALIZE(ierr)
 End Program test_pm

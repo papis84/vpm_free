@@ -1,17 +1,7 @@
+!not needded outside PM
 module pmeshpar
+    double precision , save              :: PI, PI2, PI4,DT
 
-    double precision , save              :: PI, PI2, PI4
-    double precision, save               :: XMIN_pm ,XMAX_pm, YMIN_pm, YMAX_pm, ZMIN_pm, ZMAX_pm
-    double precision, save               :: DD, DXpm, DYpm, DZpm,DXpm2,DYpm2,DZpm2,DT,DVpm,EPSVOL
-
-    integer ,save                        :: NVR, NXpm, NYpm, NZpm, NXpm_par,NYpm_par,NZpm_par, npar_cell, ND
-    integer ,save                        :: NXs_bl(10),NYs_bl(10),NXf_bl(10),NYf_bl(10),NZs_bl(10),NZf_bl(10),NBlocks
-
-    integer, save                        :: nbound,ndumcell,NVR_CFD_sa,IDVPM
-
-end module pmeshpar
-
-module pmgrid
     double precision, allocatable,save   :: velx_pm(:,:,:), vely_pm(:,:,:),velz_pm(:,:,:),qx_pm(:,:,:), qy_pm(:,:,:)
     double precision, allocatable,save   :: velphix_pm(:,:,:),velphiy_pm(:,:,:),velphiz_pm(:,:,:)
     double precision,allocatable, save   :: SOL_pm(:,:,:,:),SOL_0_pm(:,:,:,:)
@@ -20,10 +10,21 @@ module pmgrid
     integer         ,allocatable,save    :: nbound_lev(:)
     double precision,allocatable,save    :: Psiz_pm_0(:,:,:),Psiz_pm_f(:,:,:)
     double precision, allocatable,save   :: Cont_pm(:,:)
-    integer                              :: levmax
+    integer                              :: levmax,npar_cell,ND
 
+    integer, save                        :: nbound,ndumcell,NVR_CFD_sa,IDVPM
+
+end module pmeshpar
+
+module pmgrid
     double precision,allocatable,target,save       :: velvrx_pm(:,:,:),velvry_pm(:,:,:),velvrz_pm(:,:,:)
     double precision,allocatable, target,save       :: RHS_pm(:,:,:,:)
+
+    double precision, save               :: XMIN_pm ,XMAX_pm, YMIN_pm, YMAX_pm, ZMIN_pm, ZMAX_pm
+    double precision, save               :: DD, DXpm, DYpm, DZpm,DXpm2,DYpm2,DZpm2,DVpm,EPSVOL
+    integer ,save                        :: NXpm, NYpm, NZpm, NXpm_par,NYpm_par,NZpm_par    
+    integer ,save                        :: NXs_bl(10),NYs_bl(10),NXf_bl(10),NYf_bl(10),NZs_bl(10),NZf_bl(10),NBlocks
+
 end module pmgrid
 !     QP
 !   -->1 Vorticity X
@@ -34,6 +35,7 @@ end module pmgrid
 !   -->6 Mass
 !   -->7 Volume
 module parvar
+    integer                          ::NVR
     double precision, pointer , save :: XP(:,:),QP(:,:)
     double precision, pointer , save :: UP(:,:),GP(:,:)
     integer,allocatable,save            :: NVR_projtype(:)

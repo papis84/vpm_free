@@ -22,9 +22,10 @@
     integer,save                       :: NN_tmp(3),NN_bl_tmp(6),NN_coarse(3),NN_bl_coarse(6)
     integer,save                       :: nb_i,nb_j,nb_k,NBB,NXbl,NYbl,NZbl,BLOCKS,NXB,NYB,NZB,ndumcell_coarse ,ndumcell_bl
     double precision              :: starttime,endtime,st,et,ct
-    integer,save                       :: II,iynbc,iret,NBI,NBJ,NBK,NVR_out_thres,NREMESH,ntorder,&
+    integer,save                       :: iynbc,iret,NBI,NBJ,NBK,NVR_out_thres,NREMESH,ntorder,&
                                      iyntree,ilevmax,itree,nsize_out(3),ibctyp
 
+    
  End Module vpm_size
 
  Module openmpth
@@ -34,11 +35,16 @@ Module vpm_lib
   use vpm_vars
   use vpm_size
   use openmpth
-  
+
+ !private ::  starttime,endtime,st,et,ct
+ !private ::  nb_i,nb_j,nb_k,NBB,NXbl,NYbl,NZbl,BLOCKS,NXB,NYB,NZB,ndumcell_coarse ,ndumcell_bl
+ !private :: II,iynbc,iret,NBI,NBJ,NBK,NVR_out_thres,NREMESH,ntorder,&
+ !                                   iyntree,ilevmax,itree,nsize_out,ibctyp
+ 
 contains
 
  Subroutine vpm(XP_in,QP_in,UP_in,GP_in,NVR_in,neqpm_in,WhatToDo,&
-                RHS_pm_in,Velx,Vely,Velz)
+                RHS_pm_in,Velx,Vely,Velz,NTIME,NI_in,NVRM)
     use vpm_vars
     use vpm_size
     use pmeshpar
@@ -52,11 +58,12 @@ contains
 
     Implicit None 
     
-    double precision,intent(inout),target :: XP_in(:,:),QP_in(:,:),UP_in(:,:),GP_in(:,:)
+    double precision,intent(inout),target  :: XP_in(:,:),QP_in(:,:),UP_in(:,:),GP_in(:,:)
     double precision,intent(inout),pointer :: RHS_pm_in(:,:,:,:)
     double precision,intent(inout),pointer :: velx(:,:,:),vely(:,:,:),velz(:,:,:)
-    integer,         intent(inout)        :: NVR_in
-    integer,         intent(in)           :: neqpm_in,WhatToDo
+    integer,         intent(inout)         :: NVR_in
+    integer,         intent(in)            :: neqpm_in,WhatToDo,NTIME,NVRM
+    double precision,intent(in)            :: NI_in
     double precision :: a,XPM,YPM,totmass,totvor,MACH,error,pr
     integer          :: i , j, k , nb, NXs,&
                          NYs, NXf, NYf, NZs,NZf,ivel,ij,iter,IPM,ialloc
@@ -69,7 +76,7 @@ contains
     double precision ,allocatable :: QINF(:)
     double precision,allocatable  :: SOL_pm_bl(:,:,:,:),RHS_pm_bl(:,:,:,:)
     double precision              :: Xbound_tmp(6)
-    integer                       :: NN_tmp(3),NN_bl_tmp(6),NTIME
+    integer                       :: NN_tmp(3),NN_bl_tmp(6), II,itypeb
          
     character *50                 :: outfil
 
@@ -81,14 +88,17 @@ contains
        !call mkl_set_num_threads(1)
        !call mkl_domain_set_num_threads(1)
     endif
-    NTIME=10
 ! if (    PI   = 4.d0 * atan(1.d0)
     PI2  = 2.d0 * PI
     PI4  = 4.d0 * PI
     DT_c=0.2d0
-    NI   =  6.d-06
+    NI   =  NI_in
   neqpm=neqpm_in
   if (my_rank.eq.0) then 
+   nullify(QP)
+   nullify(XP)
+   nullify(UP)
+   nullify(GP)
   QP=>QP_in; XP=>XP_in
   UP=>UP_in; GP=>GP_in
   NVR = NVR_in
@@ -103,7 +113,7 @@ contains
   
 
      
-
+  nullify (RHS_pm_in)
 
   nb = my_rank + 1
   
@@ -122,47 +132,60 @@ contains
       read(1,*) OMPTHREADS
       close(1)
       call define_sizes
+
+      if (my_rank.eq.0.and.WhatTodo.eq.0) then 
+          if (allocated(velvrx_pm)) then 
+              deallocate(velvrx_pm,velvry_pm,velvrz_pm)
+              allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
+              velvrx_pm=0.d0;velvry_pm=0.d0;velvrz_pm=0.d0
+          else 
+              allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
+              velvrx_pm=0.d0;velvry_pm=0.d0;velvrz_pm=0.d0
+          endif      
+
+         nullify(velx);nullify(vely);nullify(velz)
+         velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
+      endif
       return
   endif
+
   NN_tmp(1:3)     = NNbl(1:3,nb)
   NN_bl_tmp(1:6)  = NNbl_bl(1:6,nb)
   allocate(SOL_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)),RHS_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)))
-
+  SOL_pm_bl=0.d0;RHS_pm_bl=0.d0
 
 !allocate RHS_pm for parallel projection
   if (allocated(RHS_pm)) then 
       deallocate(RHS_pm)
       allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+      RHS_pm=0.d0
   else 
       allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+      RHS_pm=0.d0
   endif
-  if (my_rank.eq.0)write(*,*) achar(27)//'[1;31m REALTIME',NTIME,achar(27)//'[0m'
   
  
   if(my_rank.eq.0) then
      if (allocated(SOL_pm)) then 
          deallocate(SOL_pm)
          allocate(SOL_pm(neqpm,NXpm,NYpm,NZpm))
+         SOL_pm=0.d0
      else
          allocate(SOL_pm(neqpm,NXpm,NYpm,NZpm))
+         SOL_pm=0.d0
      endif
   endif
 
   call project_particles 
   if(my_rank.eq.0)then 
      st=MPI_WTIME()
-     call diffuse_vort_3d
+    !call diffuse_vort_3d
   endif 
+ if (my_rank.eq.0)write(*,*) achar(27)//'[1;31m REALTIME ',NTIME,'WhatToDo = ',WhatTodo,achar(27)//'[0m'
+
+if (WhatTodo.lt.4) then 
  !call rhsbcast(RHS_pm,NN,neqpm+1)
         !------------------------------
-  if (my_rank.eq.0) then 
-      if (allocated(velvrx_pm)) then 
-          deallocate(velvrx_pm,velvry_pm,velvrz_pm)
-          allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
-      else 
-          allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
-      endif      
-  endif
      
   IF (II.ne.0) then
          nb = my_rank + 1
@@ -181,29 +204,48 @@ contains
        write(*,*) 'PMSOLVE',int((et-st)/60),'m',mod(et-st,60.d0),'s'
    endif
 
-  if (my_rank.eq.0) then 
-      if(mod(NTIME,10).eq.0) call writesol(NTIME)
 
-  endif
   if (WhatToDo.eq.1) then 
      if (my_rank.eq.0)then 
 
+         !call convect_first_order(Xbound,Dpm,NN,NN_bl)
+         call calc_velocity_serial_3d(0)
+         if(mod(NTIME,10).eq.0) call writesol(NTIME)
+      !  RHS_pm_in=>RHS_pm
+         deallocate(SOL_pm)
+         deallocate(RHS_pm)
+     endif
+     deallocate(SOL_pm_bl,RHS_pm_bl)
+     return
+  endif
+endif
+
+  if (WhatToDo.eq.4) then 
+     if (my_rank.eq.0)then 
+
+
+         call calc_velocity_serial_3d(-1)
+         itypeb=1!normal back to particles
          call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
                                    velvrx_pm,velvry_pm,velvrz_pm,&
-                                   Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj)
-
-      call convect_first_order(Xbound,Dpm,NN,NN_bl)
-         RHS_pm_in=>RHS_pm
-         velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
+                                   Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVRM)
+     !call convect_first_order(Xbound,Dpm,NN,NN_bl)
+      !  RHS_pm_in=>RHS_pm
+      !  velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
          deallocate(SOL_pm)
      endif
      deallocate(SOL_pm_bl,RHS_pm_bl)
      return
   endif
-  if (my_rank.eq.0) deallocate(Velvrx_pm,Velvry_pm,Velvrz_pm)
-  deallocate(RHS_pm,SOL_pm_bl,RHS_pm_bl)
-  if (my_rank.eq.0) deallocate(SOL_pm)
   
+ if (WhatToDo.eq.5) then 
+         call diffuse_vort_3d
+         itypeb=2!back to particles the diffused vorticity
+         call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
+                                   velvrx_pm,velvry_pm,velvrz_pm,&
+                                   Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVRM)
+
+ endif 
 contains
      Subroutine pmesh_solve
             !Yaps or Serial Pmesh
@@ -215,7 +257,7 @@ contains
                         iynbc=1!for infinite domain bc's
                         call pmesh(SOL_pm,RHS_pm,QP,XP,Xbound,DPm,NN,NN_bl,ND,Nblocks,ibctyp,1,3,&
                                    iynbc,NVR,itree,ilevmax)
-                        call calc_velocity_serial_3d(1)
+                      ! call calc_velocity_serial_3d(1)
                         write(*,*) 'PM_solved'
                 ENDIF
                 !--------------------------------------------
@@ -223,16 +265,15 @@ contains
             ELSE
                 iret =0
                 call yaps3d(SOL_pm_bl,RHS_pm_bl,Xbound_bl,Xbound_coarse,Dpm,Dpm_coarse,NNbl,NNbl_bl,&
-                    NN_coarse,NN_bl_coarse,ND,BLOCKS,ibctyp,1,3,ncoarse,NBI,NBJ,NBK,nb_i,nb_j,nb_k,&
+                    NN_coarse,NN_bl_coarse,ND,BLOCKS,ibctyp,1,neqpm,ncoarse,NBI,NBJ,NBK,nb_i,nb_j,nb_k,&
                     iret,iyntree,ilevmax,neqpm)
                 
                 nb              =  my_rank + 1
                 NN_tmp(1:3)     =  NNbl(1:3,nb)
                 NN_bl_tmp(1:6)  =  NNbl_bl(1:6,nb)
                 Xbound_tmp(1:6) =  Xbound_bl(1:6,nb)
-
                 call solget_3d(BLOCKS,NBI,NBJ,NBK,NN_tmp,NNbl,NNbl_bl,NN_bl,SOL_pm_bl)
-                if (my_rank.eq.0) call calc_velocity_serial_3d(1)
+               !if (my_rank.eq.0) call calc_velocity_serial_3d(1)
                !call velbcast_3d
             ENDIF
             !--------------------------------------------
@@ -255,10 +296,10 @@ contains
                 do i=1,neqpm+1
                    ieq(i)=i
                 enddo
-                call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,neqpm+1,ieq,neqpm+1,QINF)
+                call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,neqpm+1,ieq,neqpm+1,QINF,NVRM)
                 call proj_gath(NN)
                 if (my_rank.eq.0) then 
-                    RHS_pm(neqpm+1,:,:,:)= RHS_pm(neqpm+1,:,:,:) !+ DVpm
+               !:   RHS_pm(neqpm+1,:,:,:)= RHS_pm(neqpm+1,:,:,:) !+ DVpm
                     call omp_set_num_threads(OMPTHREADS)
                     call project_vol3d(RHS_pm,neqpm+1,ieq,neqpm+1,IDVPM)
                     et=MPI_WTIME()

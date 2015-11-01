@@ -40,14 +40,14 @@ contains
     !      - Phi                                                               !
     !      - PsiX , PsiY                                                       !
     !--------------------------------------------------------------------------!
-    Subroutine project_particles_3D(Qproj,Qpar,QpX,Qprojtype,ipar,isize,ieq,neq,QINF)
+    Subroutine project_particles_3D(Qproj,Qpar,QpX,Qprojtype,ipar,isize,ieq,neq,QINF,iparsize)
         !use pmgrid
 
         Implicit None
-        integer,intent(in) :: ipar,isize,ieq(neq)
+        integer,intent(in) :: ipar,isize,ieq(neq),iparsize
         double precision ,intent(out):: Qproj(isize,NXpm,NYpm,NZpm)
-        double precision ,intent(in) :: Qpar(isize,ipar),QpX(3,ipar),QINF(neq)
-        integer,intent(in) :: Qprojtype(ipar)
+        double precision ,intent(in) :: Qpar(isize,iparsize),QpX(3,iparsize),QINF(neq)
+        integer,intent(in) :: Qprojtype(iparsize)
         double precision   :: fx, fy, fz, f, x, y, z, projection_fun
         integer            :: inode, jnode, knode, i, j , k, nv, itype,nbj,nb,neq,ips,ipf
 
@@ -378,138 +378,6 @@ contains
     !      - Phi                                                               !
     !      - PsiX , PsiY                                                       !
     !--------------------------------------------------------------------------!
-    Subroutine project_particles_3D_vpm(Qproj,Qpar,QpX,Qprojtype,ipar,isize,ieq,neq)
-        !use pmgrid
-
-        Implicit None
-        integer,intent(in) :: ipar,isize,ieq(neq)
-        double precision ,intent(out):: Qproj(isize,NXpm,NYpm,NZpm)
-        double precision ,intent(in) :: Qpar(isize,ipar),QpX(3,ipar)
-        integer,intent(in) :: Qprojtype(ipar)
-        double precision   :: fx, fy, fz, f, x, y, z, projection_fun
-        integer            :: inode, jnode, knode, i, j , k, nv, itype,nbj,nb,neq
-
-        !-->Projection function (TSC)
-        Qproj = 0.d0
-        do  nv = 1, ipar
-            itype = Qprojtype(nv)
-            !-->Find the cell/node  the  particle belongs for X and Y and Z direction.
-            inode = int((QpX(1,nv) - XMIN_pm) / DXpm) + 1
-            jnode = int((QpX(2,nv) - YMIN_pm) / DYpm) + 1
-            knode = int((QpX(3,nv) - ZMIN_pm) / DZpm) + 1
-
-            !   do nb=1,NBlocks
-            !    if(XP(nv,1).ge.XMIN_pm+(NXS_bl(nb)-1)*DXpm.and.XP(nv,1).le.&
-                !      XMIN_pm +(NXf_bl(nb)-1)*DXpm.and.XP(nv,2).ge.YMIN_pm+(NYs_bl(nb)-1)*DYpm.and.&
-                !      XP(nv,2).le.YMIN_pm+(NYf_bl(nb)-1)*DYpm) then
-            !        nbj=nb
-            !       exit
-            !    endif
-            !    enddo
-
-            !--We search the 4 nodes close to the particles
-            do k = knode - 1, knode + 2
-                do j = jnode - 1, jnode  + 2
-                    do i = inode - 1, inode  + 2
-
-                        !do nb=1,NBlocks
-                        ! if(i.ge.NXS_bl(nb).and.i.le.NXf_bl(nb).and.j.ge.NYs_bl(nb).and.j.le.NYf_bl(nb)) then
-                        !     k=nb
-                        !    exit
-                        ! endif
-                        ! enddo
-                        x  = (QpX(1,nv)- XMIN_pm - (i-1) * DXpm) / DXpm
-                        fx = projection_fun(itype,x)
-
-                        y  = (QpX(2,nv)- YMIN_pm - (j-1) * DYpm) / DYpm
-                        fy = projection_fun(itype,y)
-
-                        z  = (QpX(3,nv)- ZMIN_pm - (k-1) * DZpm) / DZpm
-                        fz = projection_fun(itype,z)
-
-                        f = fx * fy * fz
-                        Qproj(ieq(1:neq),i,j,k) = Qproj(ieq(1:neq),i,j,k) + f * QPar(ieq(1:neq),nv)/DVpm
-                    enddo
-                enddo
-            enddo
-        enddo
-        !--After the projection all the values will be divided by Vol_pm to take into account the volume
-        !  effect in the interpolation.We extend volume and density values to no-particle regions
-
-    End Subroutine project_particles_3D_vpm
-
-    !--------------------------------------------------------------------------!
-    !-->Subroutine project_particles                                           !
-    !   This subroutine projects particle values on the PM grid                !
-    !   The values projected are :                                             !
-    !      - Mass  -> becomes Density on the grid                              !
-    !      - Volume                                                            !
-    !      - Dilatation                                                        !
-    !      - Phi                                                               !
-    !      - PsiX , PsiY                                                       !
-    !--------------------------------------------------------------------------!
-    Subroutine project_particles_2D_vpm(Qproj,Qpar,QpX,Qprojtype,ipar,isize,ieq,neq)
-        !use pmgrid
-
-        Implicit None
-        integer,intent(in) :: ipar,isize,ieq(neq)
-        double precision ,intent(out):: Qproj(isize,NXpm,NYpm,NZpm)
-        double precision ,intent(in) :: Qpar(isize,ipar),QpX(3,ipar)
-        integer,intent(in) :: Qprojtype(ipar)
-        double precision   :: fx, fy, fz, f, x, y, z, projection_fun
-        integer            :: inode, jnode, knode, i, j , k, nv, itype,nbj,nb,neq
-
-        !-->Projection function (TSC)
-        Qproj = 0.d0
-        do  nv = 1, ipar
-            itype = Qprojtype(nv)
-            !-->Find the cell/node  the  particle belongs for X and Y and Z direction.
-            inode = int((QpX(1,nv) - XMIN_pm) / DXpm) + 1
-            jnode = int((QpX(2,nv) - YMIN_pm) / DYpm) + 1
-            ! knode = int(ZVR(nv) / DZpm) 3D
-
-            !   do nb=1,NBlocks
-            !    if(XP(nv,1).ge.XMIN_pm+(NXS_bl(nb)-1)*DXpm.and.XP(nv,1).le.&
-                !      XMIN_pm +(NXf_bl(nb)-1)*DXpm.and.XP(nv,2).ge.YMIN_pm+(NYs_bl(nb)-1)*DYpm.and.&
-                !      XP(nv,2).le.YMIN_pm+(NYf_bl(nb)-1)*DYpm) then
-            !        nbj=nb
-            !       exit
-            !    endif
-            !    enddo
-
-            !--We search the 4 nodes close to the particles
-            !    do k = knode - 1, knode + 2 3D
-            k = 1 !nbj
-            do j = jnode - 1, jnode  + 2
-                do i = inode - 1, inode  + 2
-
-                    !do nb=1,NBlocks
-                    ! if(i.ge.NXS_bl(nb).and.i.le.NXf_bl(nb).and.j.ge.NYs_bl(nb).and.j.le.NYf_bl(nb)) then
-                    !     k=nb
-                    !    exit
-                    ! endif
-                    ! enddo
-                    x  = (QpX(1,nv)- XMIN_pm - (i-1) * DXpm) / DXpm
-                    fx = projection_fun(itype,x)
-
-                    y  = (QpX(2,nv)- YMIN_pm - (j-1) * DYpm) / DYpm
-                    fy = projection_fun(itype,y)
-
-                    ! z  = (ZVR(nv) - (k-1) * DZpm) / DZpm 3D
-                    ! fz = projection_fun(itype,z) * z     3D
-
-                    f = fx * fy !* fz 3D
-                    Qproj(ieq(1:neq),i,j,k) = Qproj(ieq(1:neq),i,j,k) + f * QPar(ieq(1:neq),nv)/DVpm
-                enddo
-            enddo
-            !    enddo
-        enddo
-        !--After the projection all the values will be divided by Vol_pm to take into account the volume
-        !  effect in the interpolation.We extend volume and density values to no-particle regions
-
-    End Subroutine project_particles_2D_vpm
-
-
 End module projlib
 !-----------------------------------------------------------------------------!
 !-->Function projection_fun                                                   !
@@ -519,7 +387,7 @@ End module projlib
 !      itype       : type of projection function                              !
 !      x           : position of projection
 !-----------------------------------------------------------------------------!
-Double precision Function projection_fun(itype, x)
+double precision function projection_fun(itype, x)
     Implicit None
     double precision, intent(in) :: x
     integer, intent(in)          :: itype

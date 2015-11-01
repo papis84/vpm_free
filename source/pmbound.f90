@@ -1277,17 +1277,17 @@ Subroutine PHIELS(X0,Y0,X1,Y1,DS,COSB,SINB,PI2,PHILS)
      HTAL =-(X0-X1)*SINB+(Y0-Y1)*COSB
      TA1=AKSIL ! vector XO-X1 from the first point
      TA2=AKSIL-DS!vector XO-X2 (since in l.c. X2=X1+DS then X0-X2 = XO-X1 - DS
-     if  (dabs(HTAL).gt.1.d-08) then
-          PHILS= 1./(PI2) * ( TA1*DLOG(DSQRT(TA1**2+HTAL**2))&     
-                               -TA2*DLOG(DSQRT(TA2**2+HTAL**2))&
-                               +HTAL*(DATAN(TA1/HTAL)-DATAN(TA2/HTAL))-DS)
+     if  (abs(HTAL).gt.1.d-08) then
+          PHILS= 1./(PI2) * ( TA1*LOG(SQRT(TA1**2+HTAL**2))&     
+                               -TA2*LOG(SQRT(TA2**2+HTAL**2))&
+                               +HTAL*(ATAN(TA1/HTAL)-ATAN(TA2/HTAL))-DS)
      else
           if(abs(TA1).lt.1d-08) then 
-             PHILS=1.d0/(2.d0*PI2)*(-TA2*DLOG(TA2**2) -2.d0*DS)
+             PHILS=1.d0/(2.d0*PI2)*(-TA2*LOG(TA2**2) -2.d0*DS)
           else if(abs(TA2).lt.1d-08) then 
-             PHILS=1.d0/(2.d0*PI2)*(TA1*DLOG(TA1**2)   -2d0*DS)
+             PHILS=1.d0/(2.d0*PI2)*(TA1*LOG(TA1**2)   -2d0*DS)
           else 
-            PHILS=1.d0/(2.d0*PI2)*(TA1*DLOG(TA1**2)-TA2*DLOG(TA2**2)-2.d0*DS)
+            PHILS=1.d0/(2.d0*PI2)*(TA1*LOG(TA1**2)-TA2*LOG(TA2**2)-2.d0*DS)
           endif
      end if
 
@@ -1346,7 +1346,7 @@ End Subroutine PHIELS
    ZP =   1.d0
    if (Z.lt.0.0d0) ZP = -1.d0
    AZ = abs(Z)
-   AZ = dmax1 (EPSS,AZ)
+   AZ = max1 (EPSS,AZ)
    Z  = AZ*ZP
    ZK    = Z*Z
 
@@ -1366,7 +1366,7 @@ End Subroutine PHIELS
         A2 = R(K1)+R(K2)+D(K)
         A1 = R(K1)+R(K2)-D(K)
         if (abs(A1*A2).lt.TINY) cycle
-        AK = dlog(A1/A2)
+        AK = log(A1/A2)
         TOO  (K) = -(X-S(K1))*SINB(K) + (Y-T(K1))*COSB(K)
         UL (1) = UL (1) + (T(K2)-T(K1))*AK/D(K)
         UL (2) = UL (2) - (S(K2)-S(K1))*AK/D(K)
@@ -1376,7 +1376,7 @@ End Subroutine PHIELS
 
    UL(3) = 0.5d0 * PI4
    if (ISING.ne.0) go to 4
-   AZ = dmax1 (TINY,AZ)
+   AZ = max1 (TINY,AZ)
    Z  = AZ*ZP
    
    UL(3) = 0.d0
@@ -1443,8 +1443,8 @@ End Subroutine PHIELS
               DETS,DETT,DSCP,DTCP,TINY,TINYs
 
    integer :: J,K,NOD,K1,K2,ITER,L
-     TINY=1d-014
-     TINYs=1d-014
+     TINY=1e-014
+     TINYs=1e-014
 
 !-- Define the local coordinate base     EX(), EY(), EZ()
 !          the element's center          XM()
@@ -1453,9 +1453,9 @@ End Subroutine PHIELS
       EX (1:3) = XCORN(1:3,3) - XCORN(1:3,1)
       EY (1:3) = XCORN(1:3,4) - XCORN(1:3,2)
       XM (1:3) = 0.25d0*( XCORN(1:3,1)+XCORN(1:3,2)+XCORN(1:3,3)+XCORN(1:3,4) )
-      DEX   =  dsqrt  ( EX(1)*EX(1)+EX(2)*EX(2)+EX(3)*EX(3) )
-      DEY   =  dsqrt  ( EY(1)*EY(1)+EY(2)*EY(2)+EY(3)*EY(3) )
-      DIAG  =  dmax1  ( DEX , DEY )
+      DEX   =  sqrt  ( EX(1)*EX(1)+EX(2)*EX(2)+EX(3)*EX(3) )
+      DEY   =  sqrt  ( EY(1)*EY(1)+EY(2)*EY(2)+EY(3)*EY(3) )
+      DIAG  =  max1  ( DEX , DEY )
       EZ(1) = -EX(2)*EY(3) + EX(3)*EY(2)
       EZ(2) = -EX(3)*EY(1) + EX(1)*EY(3)
       EZ(3) = -EX(1)*EY(2) + EX(2)*EY(1)
