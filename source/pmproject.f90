@@ -59,7 +59,6 @@ contains
             inode = int((QpX(1,nv) - XMIN_pm) / DXpm) + 1
             jnode = int((QpX(2,nv) - YMIN_pm) / DYpm) + 1
             knode = int((QpX(3,nv) - ZMIN_pm) / DZpm) + 1
-
             if(itype.eq.2) then
                 ips =  0
                 ipf =  1
@@ -84,7 +83,7 @@ contains
 
                         f = fx * fy * fz
                         Qproj(ieq(1:neq-1),i,j,k) = Qproj(ieq(1:neq-1),i,j,k) +&
-                            f * (QPar(ieq(1:neq-1),nv)-QINF(1:neq-1)*QPar(ieq(neq),nv))
+                            f * (QPar(ieq(1:neq-1),nv))!-QINF(1:neq-1)*QPar(ieq(neq),nv))
                         Qproj(ieq(neq),i,j,k) = Qproj(neq,i,j,k) +&
                             f * (QPar(ieq(neq),nv)-QINF(neq))
                     enddo

@@ -347,9 +347,12 @@ Subroutine particles_scat
     use pmeshpar
     use parvar
     use MPI
+    
+    Implicit None
     integer :: my_rank,np,ierr,i
     integer :: dest,NVR_pr,NVR_r,source,mat2
     integer :: status(MPI_STATUS_SIZE)
+    character *15 :: filname,filname2
     call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
     call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
 
@@ -360,26 +363,37 @@ Subroutine particles_scat
         QP_scatt(1:neqpm+1,1:NVR_p)= QP(1:neqpm+1,1:NVR_p)
         NVR_pr = NVR_p
         NVR_r  = NVR/np
-        do i=2,np
-           dest = i-1
-           call mpimat2_pm(mat2,3,NVR,3,NVR_r,NVR_pr)!NVR_pr because counting starts from 0
-           call MPI_SEND(XP,1,mat2,dest,1,MPI_COMM_WORLD,ierr)
-           call MPI_TYPE_FREE(mat2,ierr)
-       
-           call mpimat2_pm(mat2,neqpm+1,NVR,neqpm+1,NVR_r,NVR_pr)
-           call MPI_SEND(QP,1,mat2,dest,1,MPI_COMM_WORLD,ierr)
-           call MPI_TYPE_FREE(mat2,ierr)
-           NVR_pr=NVR_pr+NVR_r
-        enddo
+        if (NVR_r.gt.0)  then 
+            do i=2,np
+               dest = i-1
+               call mpimat2_pm(mat2,3,NVR_size,3,NVR_r,NVR_pr)!NVR_pr because counting starts from 0
+               call MPI_SEND(XP,1,mat2,dest,1,MPI_COMM_WORLD,ierr)
+               call MPI_TYPE_FREE(mat2,ierr)
+           
+               call mpimat2_pm(mat2,neqpm+1,NVR_size,neqpm+1,NVR_r,NVR_pr)
+               call MPI_SEND(QP,1,mat2,dest,1,MPI_COMM_WORLD,ierr)
+               call MPI_TYPE_FREE(mat2,ierr)
+               NVR_pr=NVR_pr+NVR_r
+            enddo
+        endif
     else
-        call mpimat2_pm(mat2,3,NVR_p,3,NVR_p,0)
-        call MPI_RECV(XP_scatt,1,mat2,0,1,MPI_COMM_WORLD,status,ierr)
-        call MPI_TYPE_FREE(mat2,ierr)
-
-        call mpimat2_pm(mat2,neqpm+1,NVR_p,neqpm+1,NVR_p,0)
-        call MPI_RECV(QP_scatt,1,mat2,0,1,MPI_COMM_WORLD,status,ierr)
-        call MPI_TYPE_FREE(mat2,ierr)
+       if (NVR_p.gt.0) then 
+          call mpimat2_pm(mat2,3,NVR_p,3,NVR_p,0)
+          call MPI_RECV(XP_scatt,1,mat2,0,1,MPI_COMM_WORLD,status,ierr)
+          call MPI_TYPE_FREE(mat2,ierr)
+          
+          call mpimat2_pm(mat2,neqpm+1,NVR_p,neqpm+1,NVR_p,0)
+          call MPI_RECV(QP_scatt,1,mat2,0,1,MPI_COMM_WORLD,status,ierr)
+          call MPI_TYPE_FREE(mat2,ierr)
+       endif
     endif
+
+   !write(filname,'(i1)') my_rank+1
+   !open(15,file=filname)
+   !write(15,*) 'VARIABLES="X" "Y" "Z"'
+   !do i = 1,NVR_p
+   !   write(15,'(7(e28.17,1x))') XP_scatt(1:3,i)!,QP_scatt(1:neqpm+1,i)
+   !enddo
 End Subroutine particles_scat
 
 Subroutine proj_gath(NN)
@@ -388,6 +402,7 @@ Subroutine proj_gath(NN)
     use pmeshpar
     use parvar
     use MPI
+    Implicit None
     integer,intent(in) :: NN(3)
     integer :: my_rank,np,ierr,i
     integer :: dest,NVR_pr,NVR_r,source,mat4

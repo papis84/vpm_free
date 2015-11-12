@@ -164,24 +164,24 @@ Subroutine diffuse_vort_3d
                 dwzdz = (RHS_pm(3, i, j, k + 1)  - 2 * RHS_pm(3, i, j, k) &
                          + RHS_pm(3, i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                SOL_pm(1,i,j,k) = (dwxdx+dwydy+dwzdz)
+                SOL_pm(1,i,j,k) = -NI*(dwxdx+dwydy+dwzdz) ! because RHS=-w
             enddo
         enddo
     enddo
     !$omp enddo
     !$omp endparallel
 
-    !$omp parallel private(i,j,k) num_threads(OMPTHREADS)
-    !$omp do
-    do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
-        do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
-           do i = NXs_bl(1) + 1, NXf_bl(1) - 1
+   !!$omp parallel private(i,j,k) num_threads(OMPTHREADS)
+   !!$omp do
+   !do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
+   !    do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
+   !       do i = NXs_bl(1) + 1, NXf_bl(1) - 1
 
-                !--> Remember that RHS = -w 
-                RHS_pm(1:3, i, j, k) = RHS_pm(1:3, i, j, k) - NI * SOL_pm(1,i,j,k) 
-            enddo
-        enddo
-    enddo
-    !$omp enddo
-    !$omp endparallel
+   !            !--> Remember that RHS = -w 
+   !            RHS_pm(1:3, i, j, k) = RHS_pm(1:3, i, j, k) - NI * SOL_pm(1,i,j,k) 
+   !        enddo
+   !    enddo
+   !enddo
+   !!$omp enddo
+   !!$omp endparallel
 End Subroutine diffuse_vort_3d 

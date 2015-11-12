@@ -16,7 +16,7 @@
 
         double precision,allocatable :: SOL_pm_tmp(:,:,:,:),RHS_pm_tmp(:,:,:,:)
         double precision             :: Xbound_tmp(6)
-        integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,itree,levmax
+        integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,itree
 
         !Assign variables
         nullify(SOL_pm_bl,RHS_pm_bl)

@@ -16,7 +16,7 @@
 
         double precision,allocatable :: SOL_pm_tmp(:,:,:,:),RHS_pm_tmp(:,:,:,:)
         double precision             :: Xbound_tmp(6)
-        integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,iface12,iface34,iface56,ibound,itree,levmax
+        integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,iface12,iface34,iface56,ibound,itree
 
         !Assign variables
         nullify(SOL_pm_bl,RHS_pm_bl)
@@ -188,7 +188,7 @@
         !if (my_rank.eq.1)starttime = MPI_WTIME()
         SOL_pm_coarse=0.d0
         iynbc=1
-        itree=0!iyntree
+        itree=1!iyntree
         levmax=ilevmax-1
         if (itree.eq.0) levmax=1
         call pmesh(SOL_pm_coarse,RHS_pm_coarse,QP,XP,&
@@ -314,8 +314,8 @@
 
         if(my_rank.eq.0)endtime = MPI_WTIME()
         if(my_rank.eq.0) write(199,*)'Parallel Poiss=',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
-        ! write(outfil1,'(a5,i2.2)') 'block',nb
-        ! call writesol_bl_3d(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp)
+         !write(outfil1,'(a5,i2.2)') 'block',nb
+         !call writesol_bl_3d(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp)
 
         !allocate(SOL_pm_er(NN_fine(1),NN_fine(2),1,7))
         !allocate(velvrx_tmp(NXpm,NYpm,NZpm) ,velvry_tmp(NXpm,NYpm,NZpm),velvrz_tmp(NXpm,NYpm,NZpm))

@@ -220,7 +220,7 @@ contains
         double precision,intent(inout) :: Xbound(6)
         double precision,intent(inout) :: Dpm(3)
         integer,intent(out)            :: NN(3),NN_bl(6)
-        integer :: Nblocks,ndum_new(3)
+        integer :: Nblocks,ndum_new(3),nn1,nn2
         double precision :: Xbound_old(6)
         !-> Define Pmesh X,Y,Z min/max boundaries
         if (ND.eq.2) then
@@ -295,34 +295,77 @@ contains
             ndum_new(1)  = nsize(1) - mod(NN(1)-1,nsize(1))
             ndum_new(2)  = nsize(2) - mod(NN(2)-1,nsize(2))
             ndum_new(3)  = nsize(3) - mod(NN(3)-1,nsize(3))
-            if (mod(ndum_new(1),2).ne.0) then 
-               write(*,*) 'error sizes',ndum_new,nsize(1),NN(1)
-               stop
+           !if (mod(ndum_new(1),2).ne.0) then 
+           !   write(*,*) 'error sizes',ndum_new,nsize(1),NN(1)
+         ! !   stop
+           !endif
+           !if (mod(ndum_new(2),2).ne.0) then 
+           !   write(*,*) 'error sizes',ndum_new,nsize(2),NN(2)
+         ! !   stop
+           !endif
+           !if (mod(ndum_new(3),2).ne.0.and.ND.eq.3) then 
+           !   write(*,*) 'error sizes',ndum_new,nsize(3),NN(3)
+         ! !   stop
+           !endif
+            if (mod(ndum_new(1),2).eq.0) then
+               ndum_new(1)= ndum_new(1)/2
+               Xbound(1) = Xbound(1) - ((ndum_new(1)) * Dpm(1))
+               Xbound(4) = Xbound(4) + ((ndum_new(1)) * Dpm(1))
+               ndum_new(1)= ndum_new(1)+ndum
+               NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1
+               NN_bl(1) = ndum_new(1) + 1
+               NN_bl(4) = NN(1) - ndum_new(1)
+            else
+             !write(*,*) 'aaaaa1'
+               nn1 = mod(ndum_new(1),2)
+               nn2 = int(ndum_new(1))/int(2)
+               Xbound(1) = Xbound(1) - ((nn1+nn2) * Dpm(1))
+               Xbound(4) = Xbound(4) + ((nn2) * Dpm(1))
+               NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1
+               NN_bl(1) = ndum_new(1)+ ndum + 1
+               NN_bl(4) = NN(1) - ndum
             endif
-            if (mod(ndum_new(2),2).ne.0) then 
-               write(*,*) 'error sizes',ndum_new,nsize(2),NN(2)
-               stop
+            if (mod(ndum_new(2),2).eq.0) then 
+               ndum_new(2)= ndum_new(2)/2
+               Xbound(2) = Xbound(2) - ((ndum_new(2)) * Dpm(2))
+               Xbound(5) = Xbound(5) + ((ndum_new(2)) * Dpm(2))
+               ndum_new(2)=ndum_new(2) +ndum !add the initial dummy cells
+               NN(2) = int(nint(abs(Xbound(5) - Xbound(2))/ (Dpm(2)))) + 1
+               NN_bl(2) = ndum_new(2) + 1
+               NN_bl(5) = NN(2) - ndum_new(2)
+            else
+            ! write(*,*) 'aaaaa2'
+               nn1 = mod(ndum_new(2),2)
+               nn2 = int(ndum_new(2))/int(2)
+               Xbound(2) = Xbound(2) - ((nn1+nn2) * Dpm(2))
+               Xbound(5) = Xbound(5) + ((nn2) * Dpm(2))
+               NN(2) = int(nint(abs(Xbound(5) - Xbound(2))/ (Dpm(2)))) + 1
+               NN_bl(2) = ndum_new(2)+ ndum + 1
+               NN_bl(5) = NN(2) - ndum
             endif
-            if (mod(ndum_new(3),2).ne.0.and.ND.eq.3) then 
-               write(*,*) 'error sizes',ndum_new,nsize(3),NN(3)
-               stop
-            endif
-            ndum_new= ndum_new/2
-            Xbound(1) = Xbound(1) - ((ndum_new(1)) * Dpm(1))
-            Xbound(4) = Xbound(4) + ((ndum_new(1)) * Dpm(1))
-            
-            Xbound(2) = Xbound(2) - ((ndum_new(2)) * Dpm(2))
-            Xbound(5) = Xbound(5) + ((ndum_new(2)) * Dpm(2))
             if(ND.eq.3) then
+            if (mod(ndum_new(3),2).eq.0) then 
+               ndum_new(3)= ndum_new(3)/2
                Xbound(3) = Xbound(3) - ((ndum_new(3)) * Dpm(3))
                Xbound(6) = Xbound(6) + ((ndum_new(3)) * Dpm(3))
+               ndum_new(3)=ndum_new(3) +ndum !add the initial dummy cells
+               NN(3) = int(nint(abs(Xbound(6) - Xbound(3))/ (Dpm(3)))) + 1
+               NN_bl(3) = ndum_new(3) + 1
+               NN_bl(6) = NN(3) - ndum_new(3)
+            else 
+             !write(*,*) 'aaaaa3'
+               nn1 = mod(ndum_new(3),2)
+               nn2 = int(ndum_new(3))/int(2)
+               Xbound(3) = Xbound(3) - ((nn1+nn2) * Dpm(3))
+               Xbound(6) = Xbound(6) + ((nn2) * Dpm(3))
+               NN(3) = int(nint(abs(Xbound(6) - Xbound(3))/ (Dpm(3)))) + 1
+               NN_bl(3) = ndum_new(3) + ndum + 1
+               NN_bl(6) = NN(3) - ndum
+            endif
             endif
             
-            ndum_new=ndum_new +ndum !add the initial dummy cells
-            !Find number of nodes with the Dpm given from input
-            NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1
-            NN(2) = int(nint(abs(Xbound(5) - Xbound(2))/ (Dpm(2)))) + 1
-            if(ND.eq.3)  NN(3) = int(nint(abs(Xbound(6) - Xbound(3))/ (Dpm(3)))) + 1
+            
+            return
 
             
         endif

@@ -11,7 +11,7 @@ FLAGS   =
 LIBS   = 
 #EXTRA_FLAGS=-fpe0       
 OBJSM  = vpm.o pmlib.o pmproject.o yaps.o
-OBJSHP   = testmod.o mkl_dfti.o main_pm.o pmlib.o pmproject.o libpm.o yaps.o vpm.o vpm_mpi.o vpm_time.o vpm_gcalc.o vpm_remesh.o test.o
+OBJSHP   = testmod.o mkl_dfti.o main_pm.o pmlib.o pmproject.o libpm.o yaps.o vpm.o vpm_mpi.o vpm_time.o vpm_gcalc.o vpm_remesh.o test_applic.o test.o
 OBJS     = $(OBJSHP) 
 #OBJSPS   = yaps.o
 EXENAMEIN = vpm
@@ -47,6 +47,9 @@ test.o: $(SRCHP)/test.f90
 	$(COMP)  $(FLAGS) $(EXTRA_FLAGS)  -c -module $(MODPATH) $< -o $(PATHOBJHP)/$@
 #
 testmod.o: $(SRCHP)/testmod.f90 	
+	$(COMP)  $(FLAGS) $(EXTRA_FLAGS)  -c -module $(MODPATH) $< -o $(PATHOBJHP)/$@
+#
+test_applic.o: $(SRCHP)/test_applic.f90 	
 	$(COMP)  $(FLAGS) $(EXTRA_FLAGS)  -c -module $(MODPATH) $< -o $(PATHOBJHP)/$@
 #
 vpm.o: $(SRCHP)/vpm.f90 $(SRCHP)/yaps.f90 $(SRCHP)/vpm_mpi.f90 $(SRCHP)/vpm_gcalc.f90 Makefile

@@ -72,7 +72,7 @@ if(iflag.eq.1) then
        do i=1,neqpm+1
           ieq(i)=i
        enddo
-       call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,neqpm+1,ieq,neqpm+1,QINF,NVR)
+       call project_particles_3D(RHS_pm,QP_scatt,XP_scatt,NVR_projscatt,NVR_p,neqpm+1,ieq,neqpm+1,QINF,NVR_p)
        call MPI_BARRIER(MPI_COMM_WORLD,ierr)
        call proj_gath(NN)
        deallocate(XP_scatt,QP_scatt,NVR_projscatt)
@@ -82,6 +82,8 @@ if(iflag.eq.1) then
            RHS_pm(neqpm+1,:,:,:)=DVpm
            call project_vol3d(RHS_pm,neqpm+1,ieq,neqpm+1,IDVPM)
            call omp_set_num_threads(1)
+          !call hill_assign(NN,NN_bl,Xbound,Dpm,RHS_pm,neqpm+1)
+
        endif
 
        deallocate(ieq,QINF)
