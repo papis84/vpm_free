@@ -158,13 +158,31 @@ Subroutine diffuse_vort_3d
 
                 !--> Remember that RHS = -w 
                 dwxdx = (RHS_pm(1, i + 1, j, k)  - 2 * RHS_pm(1, i, j, k) &
-                         + RHS_pm(1, i - 1, j, k)) / DXpm2
-                dwydy = (RHS_pm(2, i, j + 1, k)  - 2 * RHS_pm(2, i, j, k) &
-                         + RHS_pm(2, i, j - 1, k)) / DYpm2
-                dwzdz = (RHS_pm(3, i, j, k + 1)  - 2 * RHS_pm(3, i, j, k) &
-                         + RHS_pm(3, i, j, k - 1)) / DZpm2
+                       + RHS_pm(1, i - 1, j, k)) / DXpm2
+                dwydy = (RHS_pm(1, i, j + 1, k)  - 2 * RHS_pm(1, i, j, k) &
+                       + RHS_pm(1, i, j - 1, k)) / DYpm2
+                dwzdz = (RHS_pm(1, i, j, k + 1)  - 2 * RHS_pm(1, i, j, k) &
+                       + RHS_pm(1, i, j, k - 1)) / DZpm2
                 ! U = grad x psi
                 SOL_pm(1,i,j,k) = -NI*(dwxdx+dwydy+dwzdz) ! because RHS=-w
+
+                dwxdx = (RHS_pm(2, i + 1, j, k)  - 2 * RHS_pm(2, i, j, k) &
+                       + RHS_pm(2, i - 1, j, k)) / DXpm2
+                dwydy = (RHS_pm(2, i, j + 1, k)  - 2 * RHS_pm(2, i, j, k) &
+                       + RHS_pm(2, i, j - 1, k)) / DYpm2
+                dwzdz = (RHS_pm(2, i, j, k + 1)  - 2 * RHS_pm(2, i, j, k) &
+                       + RHS_pm(2, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                SOL_pm(2,i,j,k) = -NI*(dwxdx+dwydy+dwzdz) ! because RHS=-w
+
+                dwxdx = (RHS_pm(3, i + 1, j, k)  - 2 * RHS_pm(3, i, j, k) &
+                       + RHS_pm(3, i - 1, j, k)) / DXpm2
+                dwydy = (RHS_pm(3, i, j + 1, k)  - 2 * RHS_pm(3, i, j, k) &
+                       + RHS_pm(3, i, j - 1, k)) / DYpm2
+                dwzdz = (RHS_pm(3, i, j, k + 1)  - 2 * RHS_pm(3, i, j, k) &
+                       + RHS_pm(3, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                SOL_pm(3,i,j,k) = -NI*(dwxdx+dwydy+dwzdz) ! because RHS=-w
             enddo
         enddo
     enddo

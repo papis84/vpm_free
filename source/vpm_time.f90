@@ -107,7 +107,7 @@ Subroutine back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
       endif
 
       if (itype.eq.2) then 
-        GP(1,:)=0.d0
+        GP(1:3,:)=0.d0
       !Itype==1 normal back to part
         !$omp parallel private(nv,inode,jnode,knode,ivortx,ivorty,x,y,z,fx,fy,fz,f,i,j,k) num_threads(OMPTHREADS)
         !$omp do
@@ -134,12 +134,16 @@ Subroutine back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
                         f = fx * fy * fz
                       
                         GP(1,nv)    = GP(1,nv)    +  f * Sol_pm(1,i,j,k)
+                        GP(2,nv)    = GP(2,nv)    +  f * Sol_pm(2,i,j,k)
+                        GP(3,nv)    = GP(3,nv)    +  f * Sol_pm(3,i,j,k)
 
                     enddo
                 enddo
             enddo
 
             GP(1,nv)  = GP(1,nv) * QP(neqpm+1,nv)
+            GP(2,nv)  = GP(2,nv) * QP(neqpm+1,nv)
+            GP(3,nv)  = GP(3,nv) * QP(neqpm+1,nv)
         enddo
         !$omp enddo
         !$omp endparallel

@@ -5,7 +5,10 @@
 #
 #
 ### intel fortran compiler flags 
-COMP= /usr/local/mpiintel/bin/mpif90
+COMP=mpif90
+ifeq ($(strip $(HOSTNAME)),himura)
+      COMP=/usr/local/mpiintel/bin/mpif90
+endif
 FLAGS   = 
 #FLAGS  =-autodouble
 LIBS   = 

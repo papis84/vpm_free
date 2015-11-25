@@ -159,6 +159,7 @@ contains
 
   NN_tmp(1:3)     = NNbl(1:3,nb)
   NN_bl_tmp(1:6)  = NNbl_bl(1:6,nb)
+
   allocate(SOL_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)),RHS_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)))
   SOL_pm_bl=0.d0;RHS_pm_bl=0.d0
 
@@ -219,7 +220,14 @@ if (WhatTodo.lt.4) then
 
          !call convect_first_order(Xbound,Dpm,NN,NN_bl)
          call calc_velocity_serial_3d(0)
-         if(mod(NTIME,NWRITE).eq.0) call writesol(NTIME)
+!Petros  if(mod(NTIME,NWRITE).eq.0) call writesol(NTIME)
+         if( ((NTIME.gt. 500).and.(NTIME.le. 596)) .or.  &
+             ((NTIME.gt.1000).and.(NTIME.le.1096)) .or.  &
+             ((NTIME.gt.2000).and.(NTIME.le.2096)) .or.  &
+             ((NTIME.gt.3000).and.(NTIME.le.3096)) .or.  &
+             ((NTIME.gt.4000).and.(NTIME.le.4096)) .or.  &
+             ((NTIME.gt.5000).and.(NTIME.le.5096))  )    &
+             call writesol(NTIME)
 
          !if (ND.eq.3) then 
          ! call hill_error(NN,NN_bl,Xbound,Dpm,SOL_pm,velvrx_pm,velvry_pm,velvrz_pm)
@@ -465,7 +473,6 @@ Subroutine define_sizes
             !--B
             nb = my_rank+1
             Xbound_tmp(1:6) = Xbound_bl(1:6,nb)
-
 !define coarse grid must cover block grids
             Xbound(1:3)=minval(Xbound_bl(1:3,:))
             Xbound(4:6)=maxval(Xbound_bl(4:6,:))
@@ -542,7 +549,32 @@ Subroutine writesol(NTIME)
  
     call system('rm '//filout)
 
+    write(filout,'(i5.5,a)') NTIME,'flowfield.dat'
+    open(1,file=filout,form='unformatted')
+    write(1) NXs_bl(1),NXf_bl(1)
+    write(1) NYs_bl(1),NYf_bl(1)
+    write(1) NZs_bl(1),NZf_bl(1)
+    write(1) DXpm,DYpm,DZpm
+    write(1) XMIN_pm,YMIN_pm,ZMIN_pm
+    do k=NZs_bl(1),NZf_bl(1)
+        do j=NYs_bl(1),NYf_bl(1)
+            do i=NXs_bl(1),NXf_bl(1)
+                XPM=XMIN_pm+(I-1)*DXpm
+                YPM=YMIN_pm+(J-1)*DYpm
+                ZPM=ZMIN_pm+(K-1)*DZpm
+                velocx = VelvrX_pm(i,j,k)
+                velocy = VelvrY_pm(i,j,k)
+                velocz = VelvrZ_pm(i,j,k)
 
+                WRITE(1)       XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
+                               -RHS_pm(2,I,J,K),&
+                               -RHS_pm(3,I,J,K)
+
+            enddo
+        enddo
+    enddo
+
+    close(1)
 
 End Subroutine writesol
 

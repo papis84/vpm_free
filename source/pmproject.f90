@@ -82,8 +82,10 @@ contains
                         fz = projection_fun(itype,z)
 
                         f = fx * fy * fz
+                        if (k.lt.1) print *, QPX(1:3,nv),nv,ipar,ZMIN_pm,DZpm,nv
                         Qproj(ieq(1:neq-1),i,j,k) = Qproj(ieq(1:neq-1),i,j,k) +&
                             f * (QPar(ieq(1:neq-1),nv))!-QINF(1:neq-1)*QPar(ieq(neq),nv))
+                      
                         Qproj(ieq(neq),i,j,k) = Qproj(neq,i,j,k) +&
                             f * (QPar(ieq(neq),nv)-QINF(neq))
                     enddo
