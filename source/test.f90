@@ -15,28 +15,19 @@ call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
 call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
 !NI_in=1e-06
  if (my_rank.eq.0) then 
-!   open(1,file='part10M.dat',form='unformatted')
-!   read(1) NVR_ext
-!   read(1) Vref
-!   allocate(XPR(3,NVR_ext),QPR(4,NVR_ext))
-!   allocate(UPR(3,NVR_ext),GPR(3,NVR_ext))
-!   write(*,*) 'NVR=',NVR_ext,Vref
-!   do i=1,NVR_ext
-!      read(1) XPR(1,i),XPR(2,i),XPR(3,i),QPR(1,i),QPR(2,i),QPR(3,i)
-!   enddo
+    open(1,file='particles.bin',form='unformatted')
+    read(1) NVR_ext
+    read(1) Vref
+    allocate(XPR(3,NVR_ext),QPR(4,NVR_ext))
+    allocate(UPR(3,NVR_ext),GPR(3,NVR_ext))
+    write(*,*) 'NVR=',NVR_ext,Vref
+    do i=1,NVR_ext
+       read(1) XPR(1,i),XPR(2,i),XPR(3,i),QPR(1,i),QPR(2,i),QPR(3,i)
+    enddo
 
-!QPR(1:3,:) = -QPR(1:3,:) * Vref
-!QPR(4,:) =Vref
-  NVR_ext=2
-  allocate(XPR(3,2),QPR(4,2))
-  XPR(1,1)= -3
-  XPR(2,1)= -3
-  XPR(3,1)= -3
-
-  XPR(1,2)=  3
-  XPR(2,2)=  3
-  XPR(3,2)=  3
- endif
+ QPR(1:3,:) = -QPR(1:3,:) * Vref
+ QPR(4,:) =Vref
+endif
  !-Iwhattodo
  call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,RHS_pm_in,velx,vely,velz,0,NI_in,NVR_ext)
  call remesh_particles_3d(1)

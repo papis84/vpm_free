@@ -5,8 +5,10 @@
 #
 #
 ### intel fortran compiler flags 
+HOSTNAME=$(shell hostname)
 COMP=mpif90
 ifeq ($(strip $(HOSTNAME)),himura)
+
       COMP=/usr/local/mpiintel/bin/mpif90
 endif
 FLAGS   = 
