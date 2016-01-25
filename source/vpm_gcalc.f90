@@ -17,8 +17,8 @@ Subroutine calc_velocity_serial_3d(idcalc)
     DXpm2 = 2 * DXpm
     DYpm2 = 2 * DYpm
     DZpm2 = 2 * DZpm
-   !!$omp parallel private(i,j,k,dphidx,dphidy,dphidz,dpsidx,dpsidy,dpsidz) num_threads(OMPTHREADS)
-   !!$omp do
+   !$omp parallel private(i,j,k,dphidx,dphidy,dphidz,dpsidx,dpsidy,dpsidz) num_threads(OMPTHREADS)
+   !$omp do
     do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
         do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
            do i = NXs_bl(1) + 1, NXf_bl(1) - 1
@@ -38,8 +38,8 @@ Subroutine calc_velocity_serial_3d(idcalc)
             enddo
         enddo
     enddo
-   !!$omp enddo
-   !!$omp endparallel
+   !$omp enddo
+   !$omp endparallel
 
 !if (neqpm.gt.5) then 
 !   !$omp parallel private(i,j,k,dphidx,dphidy,dphidz,dpsidx,dpsidy,dpsidz) num_threads(OMPTHREADS)
@@ -142,7 +142,7 @@ Subroutine diffuse_vort_3d
     use pmgrid
     use openmpth
     Implicit None
-    double precision ::  dwxdx, dwydy,dwzdz
+    double precision ::  dwxdx, dwydy,dwzdz,VIS
     integer          :: i, j, k
 
 
@@ -150,12 +150,13 @@ Subroutine diffuse_vort_3d
     DYpm2 =  DYpm**2 
     DZpm2 =  DZpm**2
 
-    !$omp parallel private(i,j,k,dwxdx,dwydy,dwzdz) num_threads(OMPTHREADS)
+    !$omp parallel private(i,j,k,dwxdx,dwydy,dwzdz,VIS) num_threads(OMPTHREADS)
     !$omp do
     do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
         do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
            do i = NXs_bl(1) + 1, NXf_bl(1) - 1
-
+                VIS = RHS_pm(4,i,j,k) + NI
+                !write(*,*) VIS,neqpm
                 !--> Remember that RHS = -w 
                 dwxdx = (RHS_pm(1, i + 1, j, k)  - 2 * RHS_pm(1, i, j, k) &
                        + RHS_pm(1, i - 1, j, k)) / DXpm2
@@ -164,7 +165,7 @@ Subroutine diffuse_vort_3d
                 dwzdz = (RHS_pm(1, i, j, k + 1)  - 2 * RHS_pm(1, i, j, k) &
                        + RHS_pm(1, i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                SOL_pm(1,i,j,k) = -NI*(dwxdx+dwydy+dwzdz) ! because RHS=-w
+                SOL_pm(1,i,j,k) = -VIS*(dwxdx+dwydy+dwzdz) ! because RHS=-w
 
                 dwxdx = (RHS_pm(2, i + 1, j, k)  - 2 * RHS_pm(2, i, j, k) &
                        + RHS_pm(2, i - 1, j, k)) / DXpm2
@@ -173,7 +174,7 @@ Subroutine diffuse_vort_3d
                 dwzdz = (RHS_pm(2, i, j, k + 1)  - 2 * RHS_pm(2, i, j, k) &
                        + RHS_pm(2, i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                SOL_pm(2,i,j,k) = -NI*(dwxdx+dwydy+dwzdz) ! because RHS=-w
+                SOL_pm(2,i,j,k) = -VIS*(dwxdx+dwydy+dwzdz) ! because RHS=-w
 
                 dwxdx = (RHS_pm(3, i + 1, j, k)  - 2 * RHS_pm(3, i, j, k) &
                        + RHS_pm(3, i - 1, j, k)) / DXpm2
@@ -182,7 +183,7 @@ Subroutine diffuse_vort_3d
                 dwzdz = (RHS_pm(3, i, j, k + 1)  - 2 * RHS_pm(3, i, j, k) &
                        + RHS_pm(3, i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                SOL_pm(3,i,j,k) = -NI*(dwxdx+dwydy+dwzdz) ! because RHS=-w
+                SOL_pm(3,i,j,k) = -VIS*(dwxdx+dwydy+dwzdz) ! because RHS=-w
             enddo
         enddo
     enddo

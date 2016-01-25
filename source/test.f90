@@ -32,7 +32,7 @@ endif
  call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,RHS_pm_in,velx,vely,velz,0,NI_in,NVR_ext)
  call remesh_particles_3d(1)
 
-do i=1,1
+do i=501,501
  call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,1,RHS_pm_in,velx,vely,velz,i,NI_in,NVR_ext)
  !if (mod(i,1).eq.0) call remesh_particles_3d(1)
 enddo

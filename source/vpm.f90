@@ -7,6 +7,9 @@
     integer                       :: ncoarse,nparcell1d
     integer                       :: neqpm,NVR_p,NVR_size,iwrite
 
+
+    integer                       :: IPMWRITE
+    integer                       :: IPMWSTART(10),IPMWSTEPS(10)   
  End Module vpm_vars
  
  Module vpm_size
@@ -137,7 +140,13 @@ contains
       read(1,*) NREMESH, ncell_rem 
       read(1,*) iyntree,ilevmax
       read(1,*) OMPTHREADS
-      read(1,*) NWRITE
+      read(1,*) IPMWRITE
+      if(IPMWRITE.gt.10) stop  !maximume value of writes equal to 10
+      if(IPMWRITE.GT.0) then
+        do i=1,IPMWRITE !max value 10
+      read(1,*) IPMWSTART(i), IPMWSTEPS(i)
+        enddo
+      endif
       close(1)
       call define_sizes
       if (my_rank.eq.0) then 
@@ -220,15 +229,13 @@ if (WhatTodo.lt.4) then
 
          !call convect_first_order(Xbound,Dpm,NN,NN_bl)
          call calc_velocity_serial_3d(0)
-!Petros  if(mod(NTIME,NWRITE).eq.0) call writesol(NTIME)
-         if( ((NTIME.gt. 500).and.(NTIME.le. 596)) .or.  &
-             ((NTIME.gt.1000).and.(NTIME.le.1096)) .or.  &
-             ((NTIME.gt.2000).and.(NTIME.le.2096)) .or.  &
-             ((NTIME.gt.3000).and.(NTIME.le.3096)) .or.  &
-             ((NTIME.gt.4000).and.(NTIME.le.4096)) .or.  &
-             ((NTIME.gt.5000).and.(NTIME.le.5096))  )    &
-             call writesol(NTIME)
+      !  if(mod(NTIME,NWRITE).eq.0) call writesol(NTIME)
 
+      if(IPMWRITE.GT.0) then
+        do i=1,IPMWRITE
+      if(NTIME.ge.IPMWSTART(i).and.NTIME.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol(NTIME)
+        enddo
+      endif
          !if (ND.eq.3) then 
          ! call hill_error(NN,NN_bl,Xbound,Dpm,SOL_pm,velvrx_pm,velvry_pm,velvrz_pm)
          ! call writesol(NTIME)
@@ -265,6 +272,7 @@ endif
  if (WhatToDo.eq.5) then 
      if (my_rank.eq.0) then 
  !diffusion stores -NI*grad^2 w * Vol in GP(1,:)
+         
          call diffuse_vort_3d
          itypeb=2!back to particles the diffused vorticity
          call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
@@ -548,7 +556,7 @@ Subroutine writesol(NTIME)
     call system('~/bin/preplot '//filout//' >/dev/null')
  
     call system('rm '//filout)
-
+!  return
     write(filout,'(i5.5,a)') NTIME,'flowfield.dat'
     open(1,file=filout,form='unformatted')
     write(1) NXs_bl(1),NXf_bl(1)

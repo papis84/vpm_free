@@ -107,6 +107,7 @@ Subroutine back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
       endif
 
       if (itype.eq.2) then 
+       !diffusion
         GP(1:3,:)=0.d0
       !Itype==1 normal back to part
         !$omp parallel private(nv,inode,jnode,knode,ivortx,ivorty,x,y,z,fx,fy,fz,f,i,j,k) num_threads(OMPTHREADS)
