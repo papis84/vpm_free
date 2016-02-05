@@ -107,24 +107,24 @@ endif!
                 wmi = velvrz_pm(i-1,j,k) 
                 wmj = velvrz_pm(i,j-1,k) 
                 wmk = velvrz_pm(i,j,k-1) 
-
-                wdudx  = (RHS_pm(1,i + 1,j,k) * upi - (RHS_pm(1,i - 1,j,k)) * umi)/DXpm2
-                wdvdy  = (RHS_pm(2,i,j + 1,k) * upj - (RHS_pm(2,i,j - 1,k)) * umj)/DYpm2
-                wdwdz  = (RHS_pm(3,i,j,k + 1) * upk - (RHS_pm(3,i,j,k - 1)) * umk)/DZpm2
+ !DEFORMATION WITH A MINUS BECAUSE WE HAVE STORED MINUS VORTICITY
+                wdudx  = -(RHS_pm(1,i + 1,j,k) * upi - (RHS_pm(1,i - 1,j,k)) * umi)/DXpm2
+                wdvdy  = -(RHS_pm(2,i,j + 1,k) * upj - (RHS_pm(2,i,j - 1,k)) * umj)/DYpm2
+                wdwdz  = -(RHS_pm(3,i,j,k + 1) * upk - (RHS_pm(3,i,j,k - 1)) * umk)/DZpm2
 
                 SOL_pm(1,i,j,k) =  wdudx + wdvdy + wdwdz
 
                 ! Wy * (thu/thx + thv/thy + thw/thz)
-                wdudx  = (RHS_pm(1,i + 1,j,k) * vpi - (RHS_pm(1,i - 1,j,k)) * vmi)/DXpm2
-                wdvdy  = (RHS_pm(2,i,j + 1,k) * vpj - (RHS_pm(2,i,j - 1,k)) * vmj)/DYpm2
-                wdwdz  = (RHS_pm(3,i,j,k + 1) * vpk - (RHS_pm(3,i,j,k - 1)) * vmk)/DZpm2
+                wdudx  = -(RHS_pm(1,i + 1,j,k) * vpi - (RHS_pm(1,i - 1,j,k)) * vmi)/DXpm2
+                wdvdy  = -(RHS_pm(2,i,j + 1,k) * vpj - (RHS_pm(2,i,j - 1,k)) * vmj)/DYpm2
+                wdwdz  = -(RHS_pm(3,i,j,k + 1) * vpk - (RHS_pm(3,i,j,k - 1)) * vmk)/DZpm2
 
                 SOL_pm(2,i,j,k) =  wdudx + wdvdy + wdwdz
 
                 ! Wy * (thu/thx + thv/thy + thw/thz)
-                wdudx  = (RHS_pm(1,i + 1,j,k) * wpi  - (RHS_pm(1,i - 1,j,k)) * wmi)/DXpm2
-                wdvdy  = (RHS_pm(2,i,j + 1,k) * wpj  - (RHS_pm(2,i,j - 1,k)) * wmj)/DYpm2
-                wdwdz  = (RHS_pm(3,i,j,k + 1) * wpk  - (RHS_pm(3,i,j,k - 1)) * wmk)/DZpm2
+                wdudx  = -(RHS_pm(1,i + 1,j,k) * wpi  - (RHS_pm(1,i - 1,j,k)) * wmi)/DXpm2
+                wdvdy  = -(RHS_pm(2,i,j + 1,k) * wpj  - (RHS_pm(2,i,j - 1,k)) * wmj)/DYpm2
+                wdwdz  = -(RHS_pm(3,i,j,k + 1) * wpk  - (RHS_pm(3,i,j,k - 1)) * wmk)/DZpm2
 
                 SOL_pm(3,i,j,k) =  wdudx + wdvdy + wdwdz
             enddo

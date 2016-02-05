@@ -7,10 +7,6 @@
 ### intel fortran compiler flags 
 HOSTNAME  = $(shell hostname)
 COMP      = mpif90
-ifeq ($(strip $(HOSTNAME)),himura)
-
-    COMP  =/usr/local/mpiintel/bin/mpif90
-endif
 OBJSM     = vpm.o pmlib.o pmproject.o yaps.o
 OBJSHP    = testmod.o mkl_dfti.o main_pm.o pmlib.o pmproject.o libpm.o yaps.o vpm.o vpm_mpi.o vpm_time.o vpm_gcalc.o vpm_remesh.o test_applic.o test.o
 OBJS      = $(OBJSHP) 
