@@ -17,14 +17,14 @@ call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
  DT_in=1000
 
  if (my_rank.eq.0) then 
-    open(1,file='particles.bin',form='unformatted')
-    read(1) NVR_ext
-    read(1) Vref
+    open(1,file='particles.bin')
+    read(1,*) NVR_ext
+    read(1,*) Vref
     allocate(XPR(3,NVR_ext),QPR(4,NVR_ext))
     allocate(UPR(3,NVR_ext),GPR(3,NVR_ext))
     write(*,*) 'NVR=',NVR_ext,Vref
     do i=1,NVR_ext
-       read(1) XPR(1,i),XPR(2,i),XPR(3,i),QPR(1,i),QPR(2,i),QPR(3,i)
+       read(1,*) XPR(1,i),XPR(2,i),XPR(3,i),QPR(1,i),QPR(2,i),QPR(3,i)
     enddo
 
  QPR(1:3,:) = -QPR(1:3,:) * Vref
