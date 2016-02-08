@@ -4,16 +4,18 @@ use vpm_lib
 use test_mod
 use pmgrid
 use MPI
-double precision :: Vref,NI_in
+double precision :: Vref,NI_in,DT_in
 double precision,allocatable ::velsavex(:,:,:)
 double precision,allocatable ::XPDUM(:,:),QPDUM(:,:)
 integer          :: Noutput, NDimoutput
-integer :: my_rank,np,ierr,i
+integer :: my_rank,np,ierr,i,neq
 
 call MPI_INIT(ierr)
 call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
 call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
-!NI_in=1e-06
+ NI_in=1e-06
+ DT_in=1000
+
  if (my_rank.eq.0) then 
     open(1,file='particles.bin',form='unformatted')
     read(1) NVR_ext
@@ -28,13 +30,19 @@ call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
  QPR(1:3,:) = -QPR(1:3,:) * Vref
  QPR(4,:) =Vref
 endif
+neq=3
  !-Iwhattodo
- call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,0,RHS_pm_in,velx,vely,velz,0,NI_in,NVR_ext)
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,neq,0,RHS_pm_in,velx,vely,velz,0,NI_in,NVR_ext)
  call remesh_particles_3d(1)
 
-do i=501,501
- call vpm(XPR,QPR,UPR,GPR,NVR_ext,3,1,RHS_pm_in,velx,vely,velz,i,NI_in,NVR_ext)
+do i=1,1000
+!get velocities and deformations
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,neq,2,RHS_pm_in,velx,vely,velz,i,NI_in,NVR_ext)
  !if (mod(i,1).eq.0) call remesh_particles_3d(1)
+     do i= 1,NVR
+         XPR(1:3,i) = XPR(1:3,i)  + UPR(1:3,i) * DT_in
+         QPR(1:3,i) = QPR(1:3,i)  + GPR(1:3,i) * DT_in
+     enddo
 enddo
 
 !if (my_rank.eq.0) then 

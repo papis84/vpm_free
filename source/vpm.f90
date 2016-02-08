@@ -101,7 +101,6 @@ contains
 ! if (    PI   = 4.d0 * atan(1.d0)
     PI2  = 2.d0 * PI
     PI4  = 4.d0 * PI
-    DT_c=0.2d0
     neqpm=neqpm_in
     NI   =  NI_in
   if (my_rank.eq.0) then 
@@ -249,6 +248,37 @@ if (WhatTodo.lt.4) then
      deallocate(SOL_pm_bl,RHS_pm_bl)
      return
   endif
+
+  if (WhatToDo.eq.2) then 
+     if (my_rank.eq.0)then 
+
+         !call convect_first_order(Xbound,Dpm,NN,NN_bl)
+         call calc_velocity_serial_3d(1)
+      !  if(mod(NTIME,NWRITE).eq.0) call writesol(NTIME)
+         itypeb=1!normal back to particles
+         call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
+                                   velvrx_pm,velvry_pm,velvrz_pm,&
+                                   Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
+
+
+      if(IPMWRITE.GT.0) then
+        do i=1,IPMWRITE
+      if(NTIME.ge.IPMWSTART(i).and.NTIME.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol(NTIME)
+        enddo
+      endif
+         !if (ND.eq.3) then 
+         ! call hill_error(NN,NN_bl,Xbound,Dpm,SOL_pm,velvrx_pm,velvry_pm,velvrz_pm)
+         ! call writesol(NTIME)
+          !stop
+         !endif
+
+      !  RHS_pm_in=>RHS_pm
+         deallocate(SOL_pm)
+         deallocate(RHS_pm)
+     endif
+     deallocate(SOL_pm_bl,RHS_pm_bl)
+     return
+  endif
 endif
 
   if (WhatToDo.eq.4) then 
@@ -260,7 +290,6 @@ endif
          call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
                                    velvrx_pm,velvry_pm,velvrz_pm,&
                                    Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
-     !call convect_first_order(Xbound,Dpm,NN,NN_bl)
       !  RHS_pm_in=>RHS_pm
       !  velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
          deallocate(SOL_pm,RHS_pm)
