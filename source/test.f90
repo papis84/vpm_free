@@ -39,10 +39,13 @@ do i=1,1000
 !get velocities and deformations
  call vpm(XPR,QPR,UPR,GPR,NVR_ext,neq,2,RHS_pm_in,velx,vely,velz,i,NI_in,NVR_ext)
  !if (mod(i,1).eq.0) call remesh_particles_3d(1)
+if (my_rank.eq.0) then 
      do j= 1,NVR
          XPR(1:3,j) = XPR(1:3,j)  + UPR(1:3,j) * DT_in
          QPR(1:3,j) = QPR(1:3,j)  + GPR(1:3,j) * DT_in
      enddo
+endif
+!get velocities and deformation
 enddo
 
 !if (my_rank.eq.0) then 
