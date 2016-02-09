@@ -8,8 +8,8 @@
     integer                       :: neqpm,NVR_p,NVR_size,iwrite
 
 
-    integer                       :: IPMWRITE
-    integer                       :: IPMWSTART(10),IPMWSTEPS(10)   
+    integer,save                       :: IPMWRITE
+    integer,save                       :: IPMWSTART(10),IPMWSTEPS(10)   
  End Module vpm_vars
  
  Module vpm_size
@@ -167,7 +167,6 @@ contains
 
   NN_tmp(1:3)     = NNbl(1:3,nb)
   NN_bl_tmp(1:6)  = NNbl_bl(1:6,nb)
-
   allocate(SOL_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)),RHS_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)))
   SOL_pm_bl=0.d0;RHS_pm_bl=0.d0
 
