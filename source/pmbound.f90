@@ -702,6 +702,64 @@ Subroutine Bounds2d_lev(itype,NXs,NXf,NYs,NYf,neqs,neqf)
     endif
 
 End Subroutine Bounds2d_lev
+
+Subroutine Bounds2d_lev_new(itype,NXs,NXf,NYs,NYf,neqs,neqf)
+    Implicit None
+    integer,intent(in):: itype, NXs, NXf, NYs, NYf,neqs,neqf
+    integer           :: iconst, jconst, iplane,i,j
+    double precision  :: X,Y
+    !-->Calculate boundary conditions for each boundary (XMIN,XMAX,YMIN,YMAX)
+
+    !-->In case of infinite domain bc's(sources are used),In case 
+    !-->XMIN
+    iconst = Nxs
+    iplane  = 2
+    if (itype.eq.1) then
+        call calc_bound2d(iplane,iconst,NYs,NYf,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_2d_lev_new(iplane,iconst,NYs,NYf,neqs,neqf)
+    else if (itype.eq.3) then
+        call calc_boundinf_2d_lev_snew(iplane,iconst,NYs,NYf,neqs,neqf)
+    endif
+    !-->XMAX
+    iconst = NXf
+    iplane  = 2
+    if (itype.eq.1) then
+        call calc_bound2d(iplane,iconst,NYs,NYf,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_2d_lev_new(iplane,iconst,NYs,NYf,neqs,neqf)
+       !call calc_boundinf_2d_lev(iplane,iconst,NYs,NYf,neqs,neqf)
+    else if (itype.eq.3) then
+        iplane  = -iplane
+        call calc_boundinf_2d_lev_snew(iplane,iconst,NYs,NYf,neqs,neqf)
+       !call calc_boundinf_2d_lev(iplane,iconst,NYs,NYf,neqs,neqf)
+    endif
+
+    !-->YMIN
+    !We use Nxs + 1,NXf - 1 For corners since they already calculated
+    jconst = NYs
+    iplane = 1
+    if (itype.eq.1) then
+        call calc_bound2d(iplane,jconst,NXs+1,NXf-1,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_2d_lev_new(iplane,jconst,NXs+1,NXf-1,neqs,neqf)
+    else if (itype.eq.3) then
+        call calc_boundinf_2d_lev_snew(iplane,jconst,NXs+1,NXf-1,neqs,neqf)
+    endif
+
+    !-->YMAX
+    jconst = NYf
+    iplane  = 1
+    if (itype.eq.1) then
+        call calc_bound2d(iplane,jconst,NXs+1,NXf-1,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_2d_lev_new(iplane,jconst,NXs+1,NXf-1,neqs,neqf)
+    else if (itype.eq.3) then
+        iplane  = -iplane
+        call calc_boundinf_2d_lev_snew(iplane,jconst,NXs+1,NXf-1,neqs,neqf)
+    endif
+
+End Subroutine Bounds2d_lev_new
 !-------------------------------------------------------------------------------!
 !-> Subroutine calc_boundinf                                                    !
 !   This Subroutine calculates boundary conditions for the sources              !
@@ -774,7 +832,7 @@ Recursive Subroutine tree_calc_2d(nv,nlev,leafstart,branch,X,Y,SOURCE,neqs,neqf)
       XR     = xs_lev(nv,0,nleaf) - X
       r      = sqrt(XR**2 + YR**2)
       DS = ds_lev(nv,0,nleaf)
-      if (r.lt.4*DS.and.nlev.lt.levmax) then 
+      if (r.lt.10*DS.and.nlev.lt.levmax) then 
           call tree_calc_2d(nv,nlev + 1,leafstart,ibranch,X,Y,SOURCE,neqs,neqf)
       else 
           SOURCE(neqs : neqf) = SOURCE(neqs : neqf) + source_bound_lev(nv,neqs:neqf,0,nleaf) * DS * log(r)
@@ -783,6 +841,87 @@ Recursive Subroutine tree_calc_2d(nv,nlev,leafstart,branch,X,Y,SOURCE,neqs,neqf)
 
 End Subroutine tree_calc_2d
 
+
+Subroutine calc_boundinf_2d_lev_new(iplane,iconst,Ns,Nf,neqs,neqf)
+    Implicit None
+
+    integer, intent(in) :: iplane, iconst,Ns,Nf,neqs,neqf
+
+    double precision    :: X, Y, XR, YR, r, a,b,ra,rb,greenint,racos,rasin,DS,SOURCE(neqf)
+    integer             :: i, j,nv
+    integer             :: leafstart, leaffin, lev, nlev, nleaf, branch
+    !calculate bc's of all sources on the specified plane defined at iconst
+    !-->Y=constant plane
+    if (abs(iplane).eq.1) then
+        Y = YMIN_pm + (iconst - 1) * DYpm
+      ! do nv = 1, nbound_lev(levmax)
+         nv=1
+            do i = Ns,Nf
+                X         = XMIN_pm + (i - 1)   * DXpm
+                SOURCE    = 0.d0
+                leafstart = 0
+                branch    = 1
+                call tree_calc_2d_new(nv,levmax,leafstart,branch,X,Y,SOURCE,neqs,neqf)
+                SOL_pm(neqs:neqf,i, iconst, 1) = SOL_pm(neqs:neqf,i, iconst, 1) + SOURCE(neqs:neqf)/ pi2
+            enddo
+      ! enddo
+        !-->X=constant plane
+    else if (abs(iplane).eq.2) then
+        X = XMIN_pm + (iconst - 1) * DXpm
+      ! do nv = 1, nbound_lev(levmax)
+           nv=1
+            do j = Ns,Nf !Because corners are calculated twice
+                Y  = YMIN_pm + (j - 1) * DYpm
+                SOURCE    =0.d0
+                leafstart = 0
+                branch    = 1
+                call tree_calc_2d_new(nv,levmax,leafstart,branch,X,Y,SOURCE,neqs,neqf)
+                SOL_pm(neqs:neqf,iconst, j , 1) = SOL_pm(neqs:neqf,iconst,j, 1) + SOURCE(neqs:neqf)/ pi2
+
+            enddo
+      ! enddo
+
+    endif
+
+
+End Subroutine calc_boundinf_2d_lev_new
+
+Recursive Subroutine tree_calc_2d_new(nv,nlev,leafstart,branch,X,Y,SOURCE,neqs,neqf)
+   Implicit None
+   integer, intent(in) :: nlev,nv,neqs,neqf,branch
+   integer, intent(inout) :: leafstart
+   double precision, intent(in)  :: X , Y
+   double precision, intent(inout) :: SOURCE(neqf)
+   
+   integer                         :: newlev, nleaf, leaffin,ibranch,leafs,leaff
+   double precision                :: YR, XR, r, DS
+
+   leaffin   = min(2*nv,nbound_lev(nlev))!in case of ilev_t.eq.-1!leafstart + 2**(nlev) -1
+   leafstart = 2*nv -1
+   if (nlev.eq.levmax) then 
+      leafstart=1
+      leaffin = nbound_lev(nlev)
+   endif
+   newlev    = nlev -1 
+   ibranch   = 0
+ ! write(*,*) nlev,leafstart,leaffin
+ ! read(*,*) 
+   if (leafstart.gt.nbound_lev(nlev)) then 
+        leafstart=leaffin
+   endif
+   do nleaf = leafstart,leaffin
+      ibranch = ibranch + 1
+      YR     = ys_lev(nleaf,nlev,2) - Y
+      XR     = xs_lev(nleaf,nlev,2) - X
+      r      = sqrt(XR**2 + YR**2)
+      DS = ds_lev(nleaf,nlev,2)
+      if ((r.lt.10*DS.and.nlev.gt.0).or.ilev_t(nleaf,nlev).eq.-1) then 
+          call tree_calc_2d_new(nleaf,newlev,leafstart,ibranch,X,Y,SOURCE,neqs,neqf)
+      else 
+          SOURCE(neqs : neqf) = SOURCE(neqs : neqf) + source_bound_lev(nleaf,neqs:neqf,nlev,2) * DS * log(r)
+      endif
+   enddo
+End Subroutine tree_calc_2d_new
 !-------------------------------------------------------------------------------!
 !-> Subroutine calc_boundinf                                                    !
 !   This Subroutine calculates boundary conditions for the sources              !
@@ -858,7 +997,7 @@ Recursive Subroutine tree_calc_2d_s(nv,nlev,leafstart,branch,X,Y,cosb,sinb,PI2,S
      YR     = ys_lev(nv,0,nleaf) 
      XR     = xs_lev(nv,0,nleaf) 
      r      = sqrt((XR - X)**2 + (YR - Y)**2)
-     if (r.lt.10*sqrt(DS).and.nlev.lt.levmax) then 
+     if (r.lt.4*sqrt(DS).and.nlev.lt.levmax) then 
          call tree_calc_2d_s(nv,nlev + 1,leafstart,ibranch,X,Y,cosb,sinb,PI2,SOURCE,neqs,neqf)
      else 
        if (nlev.lt.levmax) then
@@ -873,6 +1012,104 @@ Recursive Subroutine tree_calc_2d_s(nv,nlev,leafstart,branch,X,Y,cosb,sinb,PI2,S
   enddo
 
 End Subroutine tree_calc_2d_s
+
+!-------------------------------------------------------------------------------!
+!-> Subroutine calc_boundinf                                                    !
+!   This Subroutine calculates boundary conditions for the sources              !
+!   Same as particles
+!-------------------------------------------------------------------------------!
+
+Subroutine calc_boundinf_2d_lev_snew(iplane,iconst,Ns,Nf,neqs,neqf)
+    Implicit None
+
+    integer, intent(in) :: iplane, iconst,Ns,Nf,neqs,neqf
+
+    double precision    :: X, Y, XR, YR, r, a,b,ra,rb,greenint,cosb,sinb,DS,SOURCE(neqf)
+    integer             :: i, j,nv
+    integer             :: leafstart, leaffin, lev, nlev, nleaf, branch
+    !calculate bc's of all sources on the specified plane defined at iconst
+    !-->Y=constant plane
+    if (abs(iplane).eq.1) then
+        Y = YMIN_pm + (iconst - 1) * DYpm
+        cosb=-1.d0*sign(1,iplane)
+        sinb= 0.d0
+            nv=1
+            do i = Ns,Nf
+                X         = XMIN_pm + (i - 1)   * DXpm
+                SOURCE    = 0.d0
+                leafstart = 0
+                branch    = 1
+                call tree_calc_2d_snew(nv,levmax,leafstart,branch,X,Y,cosb,sinb,PI2,SOURCE,neqs,neqf)
+                SOL_pm(neqs:neqf,i, iconst, 1) = SOL_pm(neqs:neqf,i, iconst, 1) + SOURCE(neqs:neqf)
+            enddo
+        !-->X=constant plane
+    else if (abs(iplane).eq.2) then
+        X = XMIN_pm + (iconst - 1) * DXpm
+        cosb=0.d0
+        sinb=1.d0*sign(1,iplane)
+            nv=1
+            do j = Ns,Nf !Because corners are calculated twice
+                Y  = YMIN_pm + (j - 1) * DYpm
+                SOURCE    =0.d0
+                leafstart = 0
+                branch    = 1
+                call tree_calc_2d_snew(nv,levmax,leafstart,branch,X,Y,cosb,sinb,PI2,SOURCE,neqs,neqf)
+                SOL_pm(neqs:neqf,iconst, j , 1) = SOL_pm(neqs:neqf,iconst,j, 1) + SOURCE(neqs:neqf)
+
+            enddo
+
+    endif
+
+
+End Subroutine calc_boundinf_2d_lev_snew
+
+Recursive Subroutine tree_calc_2d_snew(nv,nlev,leafstart,branch,X,Y,cosb,sinb,PI2,SOURCE,neqs,neqf)
+  Implicit None
+  integer, intent(in) :: nlev,nv,neqs,neqf,branch
+  integer, intent(inout) :: leafstart
+  double precision, intent(in)  :: X , Y, cosb, sinb,PI2
+  double precision, intent(inout) :: SOURCE(neqf)
+  
+  integer                         :: newlev, nleaf, leaffin,ibranch,leafs,leaff
+  double precision                :: YR, XR, r, DS,greenint
+
+
+   leaffin   = min(2*nv,nbound_lev(nlev))!in case of ilev_t.eq.-1!leafstart + 2**(nlev) -1
+   leafstart = 2*nv -1
+   if (nlev.eq.levmax) then 
+      leafstart=1
+      leaffin = nbound_lev(nlev)
+   endif
+   newlev    = nlev -1 
+   ibranch   = 0
+ ! write(*,*) nlev,leafstart,leaffin
+ ! read(*,*) 
+
+   if (leafstart.gt.nbound_lev(nlev)) then 
+        leafstart=leaffin
+   endif
+  do nleaf = leafstart,leaffin
+     ibranch = ibranch + 1
+     DS = ds_lev(nleaf,nlev,2)
+     YR     = ys_lev(nleaf,nlev,2) 
+     XR     = xs_lev(nleaf,nlev,2) 
+     r      = sqrt((XR - X)**2 + (YR - Y)**2)
+     if (r.lt.10*sqrt(DS).and.nlev.gt.0) then 
+         call tree_calc_2d_snew(nleaf,newlev,leafstart,ibranch,X,Y,cosb,sinb,PI2,SOURCE,neqs,neqf)
+     else 
+       if (nlev.gt.0) then
+           SOURCE(neqs : neqf) = SOURCE(neqs : neqf) + source_bound_lev(nleaf,neqs:neqf,nlev,2)& 
+                                                     * DS * log(r)/PI2
+       else  
+           call PHIELS(X,Y,XR,YR,DS,cosb,sinb,PI2,greenint)
+           SOURCE(neqs : neqf) = SOURCE(neqs : neqf) + source_bound_lev(nleaf,neqs:neqf,nlev,2)&
+                                                     * greenint
+       endif 
+     endif
+  enddo
+
+End Subroutine tree_calc_2d_snew
+
 !----------------------------------------------------------------------------!
 !-->Subroutine Bounds3d                                                      !
 !   This subroutine calculates the boundary conditions for the Solver on PM  !
@@ -959,6 +1196,92 @@ Subroutine Bounds3d_lev(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
 
 
 End Subroutine Bounds3d_lev
+!----------------------------------------------------------------------------!
+!-->Subroutine Bounds3d                                                      !
+!   This subroutine calculates the boundary conditions for the Solver on PM  !
+!   The boundary conditions change for the 3d case                           !
+!   The equation solved div(grad)F = P  needs the exact values of F in PM    !
+!   boundaries.In 2d:                                                        !
+!   For one particle : F = P * (-lnr / (2pi)  )                                 !
+!   The boundary values is the sum for all particles at each i,j             !
+!----------------------------------------------------------------------------!
+Subroutine Bounds3d_lev_new(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
+    Implicit None
+    integer,intent(in):: itype, NXs, NXf, NYs, NYf, NZs, NZf,neqs,neqf
+    integer           :: iconst, jconst, kconst, iplane
+    !-->Calculate boundary conditions for each boundary (XMIN,XMAX,YMIN,YMAX)
+    !-->iplane is the plane of calculation of the bc's (i.e. for X=const a Y plane is defined)
+    !-->iconst defines the poisition of the plane to be calculated
+    !-->N*s,N*f is the nodes on the plane to be calculated
+    !-->neqs,neqf is the bc's for more than one equations
+
+    !-->XMIN
+    iconst = Nxs
+    iplane  = 2
+    if (itype.eq.1) then
+        call calc_bound3d(iplane ,iconst, NYs, NYf, NZs, NZf,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_3d_lev_new(iplane ,iconst ,NYs ,NYf ,NZs,NZf,neqs,neqf)
+    else if (itype.eq.3) then
+        call calc_boundinf_3d_lev_snew(iplane ,iconst ,NYs ,NYf ,NZs,NZf,neqs,neqf)
+    endif
+    !-->XMAX
+    iconst = NXf
+    if (itype.eq.1) then
+        call calc_bound3d(iplane ,iconst, NYs, NYf, NZs, NZf,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_3d_lev_new(iplane, iconst, NYs, NYf, NZs, NZf,neqs,neqf)
+    else if (itype.eq.3) then
+        iplane = -iplane
+        call calc_boundinf_3d_lev_snew(iplane, iconst, NYs, NYf, NZs, NZf,neqs,neqf)
+    endif
+
+    !We use Nxs + 1,NXf - 1 For corners since they already calculated
+    !-->YMIN
+    jconst = NYs
+    iplane = 1
+    if (itype.eq.1) then
+        call calc_bound3d(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_3d_lev_new(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
+    else if (itype.eq.3) then
+        call calc_boundinf_3d_lev_snew(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
+    endif
+    !-->YMAX
+    jconst = NYf
+    if (itype.eq.1) then
+        call calc_bound3d(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_3d_lev_new(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
+    else if (itype.eq.3) then
+        iplane =-iplane
+        call calc_boundinf_3d_lev_snew(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
+    endif
+
+    !-->ZMIN
+    kconst = NZs
+    iplane = 3
+    if (itype.eq.1) then
+        call calc_bound3d(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_3d_lev_new(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
+    else if (itype.eq.3) then
+        call calc_boundinf_3d_lev_snew(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
+    endif
+    !-->ZMAX
+    kconst = NZf
+    if (itype.eq.1) then
+        call calc_bound3d(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
+    else if (itype.eq.2) then
+        call calc_boundinf_3d_lev_new(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
+    else if (itype.eq.3) then
+        iplane  = -iplane
+        call calc_boundinf_3d_lev_snew(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
+    endif
+
+
+
+End Subroutine Bounds3d_lev_new
 !-------------------------------------------------------------------------------!
 !-> Subroutine calc_boundinf                                                    !
 !   This Subroutine calculates boundary conditions for the sources              !
@@ -1084,6 +1407,141 @@ Recursive Subroutine tree_calc_3d(nv,nlev,leafstart,branch,X,Y,Z,SOURCE,neqs,neq
    enddo
 
 End Subroutine tree_calc_3d
+
+Subroutine calc_boundinf_3d_lev_new(iplane,iconst,Ns,Nf,Ns2,Nf2,neqs,neqf)
+    Implicit None
+
+    integer, intent(in) :: iplane, iconst,Ns,Nf,Ns2,Nf2,neqs,neqf
+
+    double precision    :: X, Y, XR, YR,Z, ZR,r, a,b,ra,rb,greenint,racos,rasin,DS,SOURCE(1:neqf)
+    integer             :: i, j, k,nv
+    integer             :: leafstart,branch
+    !-->Y=constant plane
+    if (abs(iplane).eq.1) then
+        Y = YMIN_pm + (iconst - 1) * DYpm
+        !calculate bc's of all sources on the specified plane defined at iconst
+      ! do nv = 1, nbound_lev(0)
+            nv=1
+            do k = Ns2,Nf2
+                do i = Ns,Nf
+                    Z  = ZMIN_pm + (k - 1)   * DZpm
+                    X  = XMIN_pm + (i - 1)   * DXpm
+
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+
+                    call tree_calc_3d_new(nv,levmax,leafstart,branch,X,Y,Z,SOURCE,neqs,neqf)
+                    SOL_pm(neqs:neqf,i, iconst, k) = SOL_pm(neqs:neqf,i, iconst, k) + SOURCE(neqs:neqf)/PI4 
+                enddo
+            enddo
+     !  enddo
+        !-->X=constant plane
+    else if (abs(iplane).eq.2) then
+        X = XMIN_pm + (iconst - 1) * DXpm
+
+     !  do nv = 1, nbound_lev(0)
+            nv=1
+            do k = Ns2,Nf2
+                do j = Ns,Nf !Because corners are calculated twice
+                    Z  = ZMIN_pm + (k - 1)   * DZpm
+                    Y  = YMIN_pm + (j - 1) * DYpm
+
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+
+                    call tree_calc_3d_new(nv,levmax,leafstart,branch,X,Y,Z,SOURCE,neqs,neqf)
+                    SOL_pm(neqs:neqf,iconst, j , k) = SOL_pm(neqs:neqf,iconst,j, k)  + SOURCE(neqs:neqf)/PI4 
+
+                enddo
+            enddo
+     !  enddo
+
+    else if (abs(iplane).eq.3) then
+        Z = ZMIN_pm + (iconst - 1) * DZpm
+
+       !do nv = 1, nbound_lev(0)
+            nv=1
+            do j = Ns2,Nf2 !Because corners are calculated twice
+                do i = Ns,Nf
+                    X  = XMIN_pm + (i - 1)   * DXpm
+                    Y  = YMIN_pm + (j - 1) * DYpm
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+                    call tree_calc_3d_new(nv,levmax,leafstart,branch,X,Y,Z,SOURCE,neqs,neqf)
+                    SOL_pm(neqs:neqf,i, j , iconst) = SOL_pm(neqs:neqf,i,j, iconst) + SOURCE(neqs:neqf)/PI4 
+
+                enddo
+            enddo
+       !enddo
+
+    endif
+
+
+End Subroutine calc_boundinf_3d_lev_new
+
+Recursive Subroutine tree_calc_3d_new(nv,nlev,leafstart,branch,X,Y,Z,SOURCE,neqs,neqf)
+   Implicit None
+   integer, intent(in) :: nlev,nv,neqs,neqf,branch
+   integer, intent(inout) :: leafstart
+   double precision, intent(in)  :: X , Y, Z
+   double precision, intent(inout) :: SOURCE(neqf)
+   
+   integer                         :: newlev, nleaf, leaffin,ibranch,leafs,leaff
+   double precision                :: XR, YR, ZR, r, DS,ss(neqf)
+   leaffin   = min(4*nv,nbound_lev(nlev))!in case of ilev_t.eq.-1!leafstart + 2**(nlev) -1
+   leafstart = 4*nv -3
+   if (nlev.eq.levmax) then 
+      leafstart=1
+      leaffin = nbound_lev(nlev)
+   endif
+   newlev    = nlev -1 
+   ibranch   = 0
+ ! write(*,*) nlev,leafstart,leaffin
+ ! read(*,*) 
+
+   do nleaf = leafstart,leaffin
+      ibranch = ibranch + 1
+      XR     = xs_lev(nleaf,nlev,2) - X
+      YR     = ys_lev(nleaf,nlev,2) - Y
+      ZR     = zs_lev(nleaf,nlev,2) - Z
+      r      = sqrt(XR**2 + YR**2 + ZR**2)
+      DS = ds_lev(nleaf,nlev,2)
+             !if(nv.eq.1) then 
+             !   write(*,*)'--------------------'
+             !   write(*,*)'nlev=', nlev
+             !   write(*,*) DS,r  
+             !   write(*,*)xs_lev(nv,0,nleaf),ys_lev(nv,0,nleaf),zs_lev(nv,0,nleaf)
+             !   write(*,*) X,Y,Z
+             !   write(*,*)'--------------------'
+             !endif
+      if (r.lt.4*sqrt(DS).and.nlev.gt.0) then 
+          call tree_calc_3d_new(nleaf,newlev,leafstart,ibranch,X,Y,Z,SOURCE,neqs,neqf)
+      else 
+          !Green function  -1/(PI4*R)
+          if (r.gt.1d-05) then
+           !ss =source_bound_lev(nleaf,neqs:neqf,nlev,2)
+
+           !if (ss(1).ge.0.or.ss.le.0.eqv.(.FALSE.)) then
+           ! write(*,*) 'NaN error',ss
+           !  STOP
+           !endif
+
+              SOURCE(neqs : neqf) = SOURCE(neqs : neqf) - source_bound_lev(nleaf,neqs:neqf,nlev,2) * DS/r
+          else
+              SOURCE(neqs : neqf) = SOURCE(neqs : neqf) +&
+              source_bound_lev(nleaf,neqs:neqf,nlev,2) *  2* sqrt(DS)*log((sqrt(2.d0)-1)/(sqrt(2.d0)+1))
+          endif
+
+      endif
+   enddo
+
+End Subroutine tree_calc_3d_new
 
 !-------------------------------------------------------------------------------!
 !-> Subroutine calc_boundinf                                                    !
@@ -1265,6 +1723,185 @@ Recursive Subroutine tree_calc_3d_s(nv,nlev,leafstart,branch,XO,SOURCE,neqs,neqf
 
 End Subroutine tree_calc_3d_s
 
+!-------------------------------------------------------------------------------!
+!-> Subroutine calc_boundinf                                                    !
+!   This Subroutine calculates boundary conditions for the sources              !
+!-------------------------------------------------------------------------------!
+Subroutine calc_boundinf_3d_lev_snew(iplane,iconst,Ns,Nf,Ns2,Nf2,neqs,neqf)
+    Implicit None
+
+    integer, intent(in) :: iplane, iconst,Ns,Nf,Ns2,Nf2,neqs,neqf
+
+    double precision    :: X, Y, XR, YR,Z, ZR,r, a,b,ra,rb,greenint,racos,rasin,DS,SOURCE(1:neqf)
+    integer             :: i, j, k,nv
+    integer             :: leafstart,branch
+
+    double precision    :: XO(3),RG(3),E1(3),E2(3),E3(3),S(4),T(4),SINB(4),COSB(4),D(4),&
+                           AREA,DIAG,EPSS,FIS
+    integer             :: ISING,NSIDE,si
+                    
+    !-->Y=constant plane
+    ISING=0
+    NSIDE=0
+    EPSS =1d-14
+    !-->Y=constant plane
+    if (abs(iplane).eq.1) then
+        Y = YMIN_pm + (iconst - 1) * DYpm
+        si = sign(1,iplane)
+        DIAG = sqrt(DXpm**2+DZpm**2)
+        E1    = 0.d0; E1(1) =  1.d0 * si 
+        E2    = 0.d0; E2(3) =  1.d0 
+        E3    = 0.d0; E3(2) = -1.d0 * si
+        COSB  = 0.d0; COSB(2)=1.d0 ; COSB(4)=-1.d0 
+        SINB  = 0.d0; SINB(1)=1.d0 ; SINB(3)=-1.d0 
+        AREA  = DXpm * DZpm
+        S(1)=-0.5 * DXpm ; S(2)=-0.5 * DXpm ; S(3)=0.5d0 *DXpm ; S(4)= 0.5d0 * DXpm 
+        T(1)=-0.5 * DZpm ; T(2)= 0.5 * DZpm ; T(3)=0.5d0 *DZpm ; T(4)=-0.5d0 * DZpm 
+        D(1)=DZpm; D(2)=DXpm;D(3)= DZpm; D(4)=DXpm
+
+        !calculate bc's of all sources on the specified plane defined at iconst
+            nv=1
+            do k = Ns2,Nf2
+                do i = Ns,Nf
+                    Z  = ZMIN_pm + (k - 1)   * DZpm
+                    X  = XMIN_pm + (i - 1)   * DXpm
+
+                    XO(1) = X; XO(2) = Y; XO(3) = Z
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+
+                    call tree_calc_3d_snew(nv,levmax,leafstart,branch,XO,SOURCE,neqs,neqf,&
+                                        DIAG,E1,E2,E3,COSB,SINB,S,T,D,NSIDE,EPSS,ISING,PI4)
+                    SOL_pm(neqs:neqf,i, iconst, k) = SOL_pm(neqs:neqf,i, iconst, k) + SOURCE(neqs:neqf) 
+                enddo
+            enddo
+        !-->X=constant plane
+    else if (abs(iplane).eq.2) then
+        X = XMIN_pm + (iconst - 1) * DXpm
+        si = sign(1,iplane)
+        DIAG = sqrt(DYpm**2+DZpm**2)
+        E1    = 0.d0; E1(3) =  1.d0 
+        E2    = 0.d0; E2(2) = -1.d0 * si
+        E3    = 0.d0; E3(1) = -1.d0 * si
+        COSB  = 0.d0; COSB(2)=1.d0 ; COSB(4)=-1.d0 
+        SINB  = 0.d0; SINB(1)=1.d0 ; SINB(3)=-1.d0 
+        AREA  = DYpm * DZpm
+        S(1)=-0.5 * DYpm ; S(2)=-0.5 * DYpm ; S(3)=0.5d0 *DYpm ; S(4)= 0.5d0 * DYpm 
+        T(1)=-0.5 * DZpm ; T(2)= 0.5 * DZpm ; T(3)=0.5d0 *DZpm ; T(4)=-0.5d0 * DZpm 
+        D(1)=DZpm; D(2)=DYpm;D(3)= DZpm; D(4)=DYpm
+
+            nv=1
+            do k = Ns2,Nf2
+                do j = Ns,Nf !Because corners are calculated twice
+                    Z  = ZMIN_pm + (k - 1)   * DZpm
+                    Y  = YMIN_pm + (j - 1) * DYpm
+
+                    XO(1) = X; XO(2) = Y; XO(3) = Z
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+
+                    call tree_calc_3d_snew(nv,levmax,leafstart,branch,XO,SOURCE,neqs,neqf,&
+                                        DIAG,E1,E2,E3,COSB,SINB,S,T,D,NSIDE,EPSS,ISING,PI4)
+                    SOL_pm(neqs:neqf,iconst, j , k) = SOL_pm(neqs:neqf,iconst,j, k)  + SOURCE(neqs:neqf)
+
+                enddo
+            enddo
+
+    else if (abs(iplane).eq.3) then
+        Z = ZMIN_pm + (iconst - 1) * DZpm
+        Z = ZMIN_pm + (iconst - 1) * DZpm
+        si = sign(1,iplane)
+        DIAG = sqrt(DXpm**2+DYpm**2)
+        E1    = 0.d0; E1(1) =  1.d0  
+        E2    = 0.d0; E2(2) = -1.d0 * si
+        E3    = 0.d0; E3(3) = -1.d0 * si
+        COSB  = 0.d0; COSB(2)=1.d0 ; COSB(4)=-1.d0 
+        SINB  = 0.d0; SINB(1)=1.d0 ; SINB(3)=-1.d0 
+        AREA  = DXpm * DYpm
+        S(1)=-0.5 * DXpm ; S(2)=-0.5 * DXpm ; S(3)=0.5d0 *DXpm ; S(4)= 0.5d0 * DXpm 
+        T(1)=-0.5 * DYpm ; T(2)= 0.5 * DYpm ; T(3)=0.5d0 *DYpm ; T(4)=-0.5d0 * DYpm 
+        D(1)=DYpm; D(2)=DXpm;D(3)= DYpm; D(4)=DXpm
+
+            nv=1
+            do j = Ns2,Nf2 !Because corners are calculated twice
+                do i = Ns,Nf
+                    X  = XMIN_pm + (i - 1)   * DXpm
+                    Y  = YMIN_pm + (j - 1) * DYpm
+
+                    XO(1) = X; XO(2) = Y; XO(3) = Z
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+                    call tree_calc_3d_snew(nv,levmax,leafstart,branch,XO,SOURCE,neqs,neqf,&
+                                        DIAG,E1,E2,E3,COSB,SINB,S,T,D,NSIDE,EPSS,ISING,PI4)
+
+
+                    SOL_pm(neqs:neqf,i, j , iconst) = SOL_pm(neqs:neqf,i,j, iconst) + SOURCE(neqs:neqf)
+
+                enddo
+            enddo
+
+    endif
+
+
+End Subroutine calc_boundinf_3d_lev_snew
+
+Recursive Subroutine tree_calc_3d_snew(nv,nlev,leafstart,branch,XO,SOURCE,neqs,neqf,&
+                     DIAG,E1,E2,E3,COSB,SINB,S,T,D,NSIDE,EPSS,ISING,PI4)
+   Implicit None
+   integer, intent(in) :: nlev,nv,neqs,neqf,branch
+   integer, intent(inout) :: leafstart
+   double precision, intent(in)  :: DIAG,E1(3),E2(3),E3(3),PI4
+   double precision, intent(in)  :: COSB(4),SINB(4),S(4),T(4),D(4)
+   double precision, intent(in)  :: EPSS
+   integer         , intent(in)  :: ISING,NSIDE
+   double precision, intent(in)  :: XO(3)
+   double precision, intent(inout) :: SOURCE(neqf)
+   
+   integer                         :: newlev, nleaf, leaffin,ibranch,leafs,leaff
+   double precision                ::r, DS, RG(3),FIS,RATIO
+
+   leaffin   = min(4*nv,nbound_lev(nlev))!in case of ilev_t.eq.-1!leafstart + 2**(nlev) -1
+   leafstart = 4*nv -3
+   if (nlev.eq.levmax) then 
+      leafstart=1
+      leaffin = nbound_lev(nlev)
+   endif
+   newlev    = nlev -1 
+   ibranch   = 0
+
+   do nleaf = leafstart,leaffin
+      ibranch = ibranch + 1
+      RG(1) = xs_lev(nleaf,nlev,2) 
+      RG(2) = ys_lev(nleaf,nlev,2) 
+      RG(3) = zs_lev(nleaf,nlev,2) 
+      r      = sqrt((XO(1)-RG(1))**2 + (XO(2)-RG(2))**2 + (XO(3)-RG(3))**2)
+      DS     = ds_lev(nleaf,nlev,2)
+      RATIO  = r/sqrt(DS)
+      if (RATIO.lt.10.and.nlev.gt.0) then 
+          call tree_calc_3d_snew(nleaf,newlev,leafstart,ibranch,XO,SOURCE,neqs,neqf,&
+                            DIAG,E1,E2,E3,COSB,SINB,S,T,D,NSIDE,EPSS,ISING,PI4)
+      else 
+       !write(*,*) newlev,ratio,r,sqrt(DS)
+        if (nlev.ne.levmax) then 
+          SOURCE = SOURCE  - source_bound_lev(nleaf,neqs:neqf,nlev,2) * DS/(PI4*r)
+        else
+          call FSOUR_A4 (XO,RG,E1,E2,E3,&
+                         S,T,D,SINB,COSB,&
+                         DIAG,DS,PI4,NSIDE,EPSS,ISING,FIS)
+          SOURCE = SOURCE + source_bound_lev(nv,neqs:neqf,nlev,2) * FIS
+        endif
+      endif
+
+   enddo
+
+End Subroutine tree_calc_3d_snew
+
 !Subroutine PHIELS calculates the potential induced by constant panels'
 ! XO is the point of calculation X1,Y1 is the first corner of the constant panel
 ! DS is the area of the face cosb,sinb give the direction assumed.
@@ -1277,17 +1914,17 @@ Subroutine PHIELS(X0,Y0,X1,Y1,DS,COSB,SINB,PI2,PHILS)
      HTAL =-(X0-X1)*SINB+(Y0-Y1)*COSB
      TA1=AKSIL ! vector XO-X1 from the first point
      TA2=AKSIL-DS!vector XO-X2 (since in l.c. X2=X1+DS then X0-X2 = XO-X1 - DS
-     if  (abs(HTAL).gt.1.d-08) then
-          PHILS= 1./(PI2) * ( TA1*LOG(SQRT(TA1**2+HTAL**2))&     
-                               -TA2*LOG(SQRT(TA2**2+HTAL**2))&
-                               +HTAL*(ATAN(TA1/HTAL)-ATAN(TA2/HTAL))-DS)
+     if  (dabs(HTAL).gt.1.d-08) then
+          PHILS= 1./(PI2) * ( TA1*DLOG(DSQRT(TA1**2+HTAL**2))&     
+                               -TA2*DLOG(DSQRT(TA2**2+HTAL**2))&
+                               +HTAL*(DATAN(TA1/HTAL)-DATAN(TA2/HTAL))-DS)
      else
           if(abs(TA1).lt.1d-08) then 
-             PHILS=1.d0/(2.d0*PI2)*(-TA2*LOG(TA2**2) -2.d0*DS)
+             PHILS=1.d0/(2.d0*PI2)*(-TA2*DLOG(TA2**2) -2.d0*DS)
           else if(abs(TA2).lt.1d-08) then 
-             PHILS=1.d0/(2.d0*PI2)*(TA1*LOG(TA1**2)   -2d0*DS)
+             PHILS=1.d0/(2.d0*PI2)*(TA1*DLOG(TA1**2)   -2d0*DS)
           else 
-            PHILS=1.d0/(2.d0*PI2)*(TA1*LOG(TA1**2)-TA2*LOG(TA2**2)-2.d0*DS)
+            PHILS=1.d0/(2.d0*PI2)*(TA1*DLOG(TA1**2)-TA2*DLOG(TA2**2)-2.d0*DS)
           endif
      end if
 
@@ -1346,7 +1983,7 @@ End Subroutine PHIELS
    ZP =   1.d0
    if (Z.lt.0.0d0) ZP = -1.d0
    AZ = abs(Z)
-   AZ = max1 (EPSS,AZ)
+   AZ = dmax1 (EPSS,AZ)
    Z  = AZ*ZP
    ZK    = Z*Z
 
@@ -1366,7 +2003,7 @@ End Subroutine PHIELS
         A2 = R(K1)+R(K2)+D(K)
         A1 = R(K1)+R(K2)-D(K)
         if (abs(A1*A2).lt.TINY) cycle
-        AK = log(A1/A2)
+        AK = dlog(A1/A2)
         TOO  (K) = -(X-S(K1))*SINB(K) + (Y-T(K1))*COSB(K)
         UL (1) = UL (1) + (T(K2)-T(K1))*AK/D(K)
         UL (2) = UL (2) - (S(K2)-S(K1))*AK/D(K)
@@ -1376,7 +2013,7 @@ End Subroutine PHIELS
 
    UL(3) = 0.5d0 * PI4
    if (ISING.ne.0) go to 4
-   AZ = max1 (TINY,AZ)
+   AZ = dmax1 (TINY,AZ)
    Z  = AZ*ZP
    
    UL(3) = 0.d0
@@ -1443,8 +2080,8 @@ End Subroutine PHIELS
               DETS,DETT,DSCP,DTCP,TINY,TINYs
 
    integer :: J,K,NOD,K1,K2,ITER,L
-     TINY=1e-014
-     TINYs=1e-014
+     TINY=1d-014
+     TINYs=1d-014
 
 !-- Define the local coordinate base     EX(), EY(), EZ()
 !          the element's center          XM()
@@ -1453,9 +2090,9 @@ End Subroutine PHIELS
       EX (1:3) = XCORN(1:3,3) - XCORN(1:3,1)
       EY (1:3) = XCORN(1:3,4) - XCORN(1:3,2)
       XM (1:3) = 0.25d0*( XCORN(1:3,1)+XCORN(1:3,2)+XCORN(1:3,3)+XCORN(1:3,4) )
-      DEX   =  sqrt  ( EX(1)*EX(1)+EX(2)*EX(2)+EX(3)*EX(3) )
-      DEY   =  sqrt  ( EY(1)*EY(1)+EY(2)*EY(2)+EY(3)*EY(3) )
-      DIAG  =  max1  ( DEX , DEY )
+      DEX   =  dsqrt  ( EX(1)*EX(1)+EX(2)*EX(2)+EX(3)*EX(3) )
+      DEY   =  dsqrt  ( EY(1)*EY(1)+EY(2)*EY(2)+EY(3)*EY(3) )
+      DIAG  =  dmax1  ( DEX , DEY )
       EZ(1) = -EX(2)*EY(3) + EX(3)*EY(2)
       EZ(2) = -EX(3)*EY(1) + EX(1)*EY(3)
       EZ(3) = -EX(1)*EY(2) + EX(2)*EY(1)

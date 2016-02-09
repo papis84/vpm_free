@@ -16,7 +16,7 @@
 
         double precision,allocatable :: SOL_pm_tmp(:,:,:,:),RHS_pm_tmp(:,:,:,:)
         double precision             :: Xbound_tmp(6)
-        integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,itree
+        integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,itree,lmax
 
         !Assign variables
         nullify(SOL_pm_bl,RHS_pm_bl)
@@ -44,13 +44,13 @@
         SOL_pm_bl=0.d0
         iynbc=1 !infinite domain bc's
         itree=iyntree !tree algorithm for sources
-        levmax=ilevmax!maximum level
+        lmax=ilevmax!maximum level
         ! 1 is the Nblocks not needed needs fix
         call pmesh(SOL_pm_bl,RHS_pm_bl,QP,XP,&
-                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,levmax)
+                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
 
         !write(outfil1,'(a9,i2.2)') 'blockgrow',nb
-        !call writegrow(RHS_pm,SOL_pm,Dpm_fine,outfil1,Xbound,NN_bl,NN)
+        !call writegrow(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp)
         !---Block definitions
 
 
@@ -190,18 +190,19 @@
         !if (my_rank.eq.1)starttime = MPI_WTIME()
         SOL_pm_coarse=0.d0
         iynbc=1
-        itree=0!iyntree
-        levmax=ilevmax-1
-        if (itree.eq.0) levmax=1
+        itree= iyntree
+        lmax=ilevmax
+        if (itree.eq.0) lmax=1
+        if (my_rank.eq.0) write(199,*) 'coarse'
         call pmesh(SOL_pm_coarse,RHS_pm_coarse,QP,XP,Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,&
-            1,ibctyp,neqs,neqf,iynbc,0,itree,levmax)
+            1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
         ! if(my_rank.eq.1)endtime = MPI_WTIME()
         ! if(my_rank.eq.1) write(*,*)'Poisson Coarse=',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
         call mapnodes_bl
        !if (my_rank.eq.0) then
-            !outfil2='coarse_laplacian'
-            !call writegrow(RHS_pm_coarse,SOL_pm_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
+       !     outfil2='coarse_laplacian'
+       !     call writegrow(RHS_pm_coarse,SOL_pm_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
        !endif
         ! Interpolate to all blocks
         
@@ -262,9 +263,9 @@
         !iynbc=0 means that the bc's of the poisson solver are already defined
         iynbc=0
         itree=0
-        levmax=0
+        lmax=0
         call pmesh(SOL_pm_bl,RHS_pm_bl,QP,XP,&
-                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,levmax)
+                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
 
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 

@@ -126,7 +126,7 @@ contains
                     do i =1, NXpm
                         if (i.lt.NXs.or.i.gt.NXf.or.j.lt.NYs.or.j.ge.NYf.or.k.lt.NZs.or.k.gt.NZf) then
                             Qproj (ieq(1:neq-1),i,j,k) = 0.d0
-                            Qproj (ieq(1:neq-1),i,j,k) = DVpm
+                            Qproj (ieq(neq),i,j,k) = DVpm
                             cycle
                         endif
                             Qproj (ieq(1:neq-1),i,j,k) = Qproj(ieq(1:neq-1),i,j,k)/(Qproj(ieq(neq),i,j,k))

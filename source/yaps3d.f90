@@ -16,7 +16,7 @@
 
         double precision,allocatable :: SOL_pm_tmp(:,:,:,:),RHS_pm_tmp(:,:,:,:)
         double precision             :: Xbound_tmp(6)
-        integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,iface12,iface34,iface56,ibound,itree
+        integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,iface12,iface34,iface56,ibound,itree,lmax
 
         !Assign variables
         nullify(SOL_pm_bl,RHS_pm_bl)
@@ -40,13 +40,13 @@
         SOL_pm_bl=0.d0
         iynbc=1!infinite domain bc's
         itree=iyntree !tree algorithm for sources
-        levmax=ilevmax!maximum level
+        lmax=ilevmax!maximum level
         ! 1 is the Nblocks not needed needs fix
         call pmesh(SOL_pm_bl,RHS_pm_bl,QP,XP,&
-                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,levmax)
+                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
 
-        !write(outfil1,'(a9,i2.2)') 'blockgrow',nb
-        !call writegrow(RHS_pm,SOL_pm,Dpm_fine,outfil1,Xbound,NN_bl,NN)
+       ! write(outfil1,'(a9,i2.2)') 'blockgrow',nb
+       ! call  writesol_bl_3d(outfil1,Dpm_fine,Xbound_tmp,NN_bl_tmp,NN_tmp)
         !---Block definitions
 
         !Define coarse pm from which values will be interpolated for the final solve
@@ -54,6 +54,8 @@
 
 
 
+          if(my_rank.eq.0)endtime = MPI_WTIME()
+          if(my_rank.eq.0) write(199,*)'pmesh',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
         allocate(SOL_pm_coarse(npmsize,NXpm_c,NYpm_c,NZpm_c),RHS_pm_coarse(npmsize,NXpm_c,NYpm_c,NZpm_c))
 
 
@@ -69,7 +71,7 @@
             ! write(*,*) 'Coarse block dimensions'
             ! write(*,*) NN_bl_coarse(1:6)
             !outfil2='coarse'
-            !call writesol(RHS_pm_coarse,SOL_pm_coarse,velphix_coarse,velphiy_coarse,velvrx_coarse,velvry_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
+            !call writesol(RHS_pm_coarse,SOL_pm_coarse,velphix_coarse,velphiy_coarse,velvrx_coarse,velvry_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)DU91-W2-250
         !endif
 
 
@@ -84,9 +86,11 @@
         map_nodes=0
 
         nb     = my_rank+1 !(j_nb-1)*NBB + i_nb
-
+       
         !This is done by ALL blocks for ALL blocks.The main reason is NN_coarse_map.An alternate would be
         !broadcasting this information
+
+        if(my_rank.eq.0)starttime = MPI_WTIME()
         do nbc=1,BLOCKS
             NXs    = 1!NNbl_bl(1,nb)
             NXf    = NNbl(1,nbc)!NNbl_bl(4,nb)
@@ -122,6 +126,10 @@
                 enddo
            enddo
 
+          if(my_rank.eq.0)endtime = MPI_WTIME()
+          if(my_rank.eq.0) write(199,*)'pm_sample1',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
+
+        if(my_rank.eq.0)starttime = MPI_WTIME()
         !--BCAST Sol_pm_sample
         nb=my_rank+1
         if (my_rank.eq.0) then
@@ -158,6 +166,9 @@
             deallocate(SOL_pm_tmp,RHS_pm_tmp)
         endif
         !We broadcast SOL_pm_sample(which is the addition of Sampled solution from proccesors to all cpu's
+          if(my_rank.eq.0)endtime = MPI_WTIME()
+          if(my_rank.eq.0) write(199,*)'pm_sample11',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
+        if(my_rank.eq.0)starttime = MPI_WTIME()
         call mpimat5(mat5,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3),BLOCKS)
         call MPI_BCAST(SOL_pm_sample,1,mat5,0,MPI_COMM_WORLD,ierr)
         call MPI_TYPE_FREE(mat5,ierr)
@@ -167,6 +178,8 @@
         call MPI_BCAST(RHS_pm_coarse,1,mat4,0,MPI_COMM_WORLD,ierr)
         call MPI_TYPE_FREE(mat4,ierr)
 
+          if(my_rank.eq.0)endtime = MPI_WTIME()
+          if(my_rank.eq.0) write(199,*)'pm_bcast',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
         !add Sampling blocks
        !allocate (SOL_pm_sumsample(NN_coarse(1),NN_coarse(2),NN_coarse(3),7))
@@ -177,8 +190,8 @@
         !call calc_laplacian(SOL_pm_sumsample,RHS_pm_coarse,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_bl_coarse)
 
         !if(my_rank.eq.0)then
-            !outfil2='coarse_sumsample_grow'
-            !call writegrow(RHS_pm_coarse,SOL_pm_sumsample,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
+        !    outfil2='coarse_sumsample_grow'
+        !   call  writesol_bl_3d(outfil2,Dpm_coarse,Xbound_coarse,NN_bl_coarse,NN_coarse)
         !endif
 
         ! if (my_rank.eq.1)starttime = MPI_WTIME()
@@ -188,14 +201,17 @@
         !if (my_rank.eq.1)starttime = MPI_WTIME()
         SOL_pm_coarse=0.d0
         iynbc=1
-        itree=1!iyntree
-        levmax=ilevmax-1
+        itree=iyntree
+        lmax=ilevmax
+        if(my_rank.eq.0)starttime = MPI_WTIME()
         if (itree.eq.0) levmax=1
         call pmesh(SOL_pm_coarse,RHS_pm_coarse,QP,XP,&
-             Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,levmax)
+             Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
         ! if(my_rank.eq.1)endtime = MPI_WTIME()
         ! if(my_rank.eq.1) write(*,*)'Poisson Coarse=',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
+          if(my_rank.eq.0)endtime = MPI_WTIME()
+          if(my_rank.eq.0) write(199,*)'pmesh_coarse',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
        !if (my_rank.eq.0) then
             !outfil2='coarse_laplacian'
             !call writegrow(RHS_pm_coarse,SOL_pm_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
@@ -203,6 +219,7 @@
         ! Interpolate to all blocks
         
         ! At this point we calculate boundary conditions for each block and solve it 
+        if(my_rank.eq.0)starttime = MPI_WTIME()
         nb  = my_rank+1
         NXs = NNbl_bl(1,nb)
         NXf = NNbl_bl(4,nb)
@@ -230,6 +247,10 @@
         !---------------------------------------------------------------------------------
         !Xs boundary ,9 point stencil
         !face 1
+
+          if(my_rank.eq.0)endtime = MPI_WTIME()
+          if(my_rank.eq.0) write(199,*)'pm_bc1',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
+          if(my_rank.eq.0)starttime = MPI_WTIME()
         i=NXs
         do k = NZs, NZf
           do j = NYs, NYf
@@ -301,21 +322,24 @@
             nullify(SOL_pm_bl,RHS_pm_bl)
             return
         endif
+          if(my_rank.eq.0)endtime = MPI_WTIME()
+          if(my_rank.eq.0) write(199,*)'pm_bc2',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
         ! write(*,*) 'Solving for Block',nb
         !iynbc=0 means that the bc's of the poisson solver are already defined
         iynbc=0
         itree=0
-        levmax=0
+        lmax=0
+        if (my_rank.eq.0) starttime=MPI_WTIME()
         call pmesh(SOL_pm_bl,RHS_pm_bl,QP,XP,&
-                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,levmax)
+                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
+        if(my_rank.eq.0)endtime = MPI_WTIME()
+        if(my_rank.eq.0) write(199,*)'pmesh_final',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
 
-        if(my_rank.eq.0)endtime = MPI_WTIME()
-        if(my_rank.eq.0) write(199,*)'Parallel Poiss=',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
-         !write(outfil1,'(a5,i2.2)') 'block',nb
-         !call writesol_bl_3d(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp)
+        ! write(outfil1,'(a5,i2.2)') 'block',nb
+        ! call writesol_bl_3d(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp)
 
         !allocate(SOL_pm_er(NN_fine(1),NN_fine(2),1,7))
         !allocate(velvrx_tmp(NXpm,NYpm,NZpm) ,velvry_tmp(NXpm,NYpm,NZpm),velvrz_tmp(NXpm,NYpm,NZpm))

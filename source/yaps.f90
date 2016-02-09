@@ -126,8 +126,8 @@ contains
 
             character*25      :: outfil
             integer           :: i,j,k,NN_bl(6),NN(3)
-            double precision  :: RHS_pm(NN(1),NN(2),NN(3),7)
-            double precision  :: SOL_pm(NN(1),NN(2),NN(3),7)
+            double precision  :: RHS_pm(7,NN(1),NN(2),NN(3))
+            double precision  :: SOL_pm(7,NN(1),NN(2),NN(3))
             double precision  :: Dpm(3),Xbound(6)
             double precision  :: XPM,YPM,ZPM,velx,vely,velz
 
@@ -162,23 +162,20 @@ contains
 
         End Subroutine writesol_bl
 
-        Subroutine writesol_bl_3d(RHS_pm,SOL_pm,Dpm,outfil,Xbound,NN_bl,NN)
+        Subroutine writesol_bl_3d(outfil,Dpm,Xbound,NN_bl,NN)
 
             character*25      :: outfil
             integer           :: i,j,k,NN_bl(6),NN(3)
-            double precision  :: RHS_pm(3,NN(1),NN(2),NN(3))
-            double precision  :: SOL_pm(3,NN(1),NN(2),NN(3))
             double precision  :: Dpm(3),Xbound(6)
-            double precision  :: XPM,YPM,ZPM,velx,vely,velz
-
+            double precision  :: XPM,YPM,ZPM
 
             open(1,file=outfil)
-            WRITE(1,'(a250)')'VARIABLES = "X" "Y" "Z" "VORTX" "VORTY" "VORTZ" "PSIX" "PSIY" "PSIZ"'
-            WRITE(1,*)'ZONE T='//outfil//' I=',NN_bl(4)-NN_bl(1)+1,' J=',NN_bl(5) - NN_bl(2) + 1,' K=',NN_bl(6)-NN_bl(3) + 1,&
+            WRITE(1,'(a250)')'VARIABLES = "X" "Y" "Z"'
+            WRITE(1,*)'ZONE T='//outfil//' I=',NN(1),' J=',NN(2),' K=',NN(3),&
            ' F=POINT'
-            do k=NN_bl(3),NN_bl(6)
-               do j=NN_bl(2),NN_bl(5)
-                   do i=NN_bl(1),NN_bl(4)
+            do k=1,NN(3)
+               do j=1,NN(2)
+                   do i=1,NN(1)
                        ! WRITE(1,*)'ZONE I=',NXpm,' J=',NYpm,' F=POINT'
                        ! do j=1,NYpm
                        !   do i=1,NXpm
@@ -190,10 +187,7 @@ contains
                        !velx = VelphiX_pm(i,j,1) + VelvrX_pm(i,j,1)
                        !vely = VelphiY_pm(i,j,1) + VelvrY_pm(i,j,1)
                
-                       WRITE(1,'(11(e28.17,1x))')XPM,YPM,ZPM,-RHS_pm(1,I,J,K),-RHS_pm(2,I,J,k),-RHS_pm(3,I,J,K),&
-                                                 SOL_pm(1,I,J,K),SOL_pm(2,I,J,K),SOL_pm(3,I,J,K)
-                                                 
-               
+                      WRITE(1,'(3(e28.17,1x))')XPM,YPM,ZPM  
                    enddo
                enddo
             enddo
@@ -210,8 +204,8 @@ contains
 
             character*25      :: outfil
             integer           :: i,j,k,NN_bl(6),NN(3)
-            double precision  :: RHS_pm(7,NN(1),NN(2),NN(3))
-            double precision  :: SOL_pm(7,NN(1),NN(2),NN(3))
+            double precision  :: RHS_pm(3,NN(1),NN(2),NN(3))
+            double precision  :: SOL_pm(3,NN(1),NN(2),NN(3))
             double precision  :: Dpm(3),Xbound(6)
             double precision  :: XPM,YPM,ZPM,velx,vely,velz
 

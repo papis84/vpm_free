@@ -20,14 +20,14 @@ module pmlib
     double precision,pointer             :: SOL_pm(:,:,:,:), RHS_pm(:,:,:,:),QP(:,:),XP(:,:)
     double precision,allocatable         :: SOL_0_pm(:,:,:,:), source_bound(:,:),x_s(:,:),y_s(:,:),z_s(:,:),d_s(:),cos_s(:),sin_s(:)
     double precision,allocatable,save    :: source_bound_lev(:,:,:,:),xs_lev(:,:,:),ys_lev(:,:,:),zs_lev(:,:,:),ds_lev(:,:,:)
-    integer,allocatable,save             :: nbound_lev(:)
+    integer,allocatable,save             :: nbound_lev(:),ilev_t(:,:)
 
     private ::PI,PI2,PI4,XMIN_pm,XMAX_pm,YMIN_pm,YMAX_pm,ZMIN_pm,ZMAX_pm,DXpm,DYpm,DZpm,NVR,NXpm,NYpm,NZPm,ND
     private ::NXs_bl,NYs_bl,NXf_bl,NYf_bl,NZs_bl,NZf_bl,NBlocks,DXpm2,DYpm2,DZpm2
     private ::SOL_pm,RHS_pm,SOL_0_pm,QP,XP
     private ::source_bound,x_s,y_s,z_s,d_s,cos_s,sin_s
     private ::source_bound_lev,xs_lev,ys_lev,zs_lev,ds_lev
-    private ::nbound
+    private ::nbound,ilev_t
 
 contains
 !--------------------------------------------------------------------------------
@@ -364,7 +364,11 @@ contains
             endif
             endif
             
-            
+            if(ND.eq.2) then 
+               NN(3)=1
+               NN_bl(3) = 1
+               NN_bl(6) = 1
+            endif
             return
 
             
