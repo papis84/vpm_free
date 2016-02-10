@@ -14,7 +14,8 @@ call MPI_INIT(ierr)
 call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
 call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
  NI_in=1e-06
- DT_in=0.761905  !=dx/U=8/10.5   !1000
+ DT_in=0.761905/2.  !=dx/U=8/10.5   !1000
+ DT_in=0.761905     !=dx/U=8/10.5   !1000
 
  if (my_rank.eq.0) then 
     open(1,file='particles.bin')
@@ -32,7 +33,7 @@ call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
 endif
 neq=3
  !-Iwhattodo
-!call remesh_particles_3d(1)
+ call vpm(XPR,QPR,UPR,GPR,NVR_ext,neq,0,RHS_pm_in,velx,vely,velz,0,NI_in,NVR_ext)
 
 do i=1,1000
 !get velocities and deformations
@@ -45,6 +46,7 @@ if (my_rank.eq.0) then
          QPR(1:3,j) = QPR(1:3,j)  + GPR(1:3,j) * DT_in
      enddo
 endif
+ call remesh_particles_3d(1)
 !get velocities and deformation
 enddo
 

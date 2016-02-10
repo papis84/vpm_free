@@ -90,7 +90,7 @@ if(iflag.eq.1) then
 endif
 
 if (my_rank.eq.0) then 
-    deallocate(XPR,QPR)
+    deallocate(XPR,QPR,UPR,GPR)
     ncell =ncell_rem
     ndum_rem=2
     nnod  =1 !if ncell gt 1 particles IN cell else in nodes
@@ -108,6 +108,7 @@ if (my_rank.eq.0) then
     NZpm1   = nzfin - nzstart + 1
     NVR       =  NXpm1*NYpm1*NZpm1*ncell
     allocate(XPR(3,NVR),QPR(neqpm+1,NVR))
+    allocate(UPR(3,NVR),GPR(3,NVR))
     XP=>XPR
     QP=>QPR
     XP=0
