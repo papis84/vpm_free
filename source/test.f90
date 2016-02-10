@@ -4,7 +4,7 @@ use vpm_lib
 use test_mod
 use pmgrid
 use MPI
-double precision :: Vref,NI_in,DT_in
+double precision :: Vref,NI_in,DT_in,RMETM,OMET,OG,FACDEF
 double precision,allocatable ::velsavex(:,:,:)
 double precision,allocatable ::XPDUM(:,:),QPDUM(:,:)
 integer          :: Noutput, NDimoutput
@@ -30,6 +30,7 @@ call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
 
  QPR(1:3,:) = -QPR(1:3,:) * Vref
  QPR(4,:) =Vref
+ RMETM=0.001
 endif
 neq=3
  !-Iwhattodo
@@ -43,7 +44,16 @@ do i=1,1000
 if (my_rank.eq.0) then 
      do j= 1,NVR_ext
          XPR(1:3,j) = XPR(1:3,j)  + UPR(1:3,j) * DT_in
-         QPR(1:3,j) = QPR(1:3,j)  + GPR(1:3,j) * DT_in
+
+         FACDEF = 1.
+         OMET   = sqrt ( QPR(1,j)**2 + QPR(2,j)**2 + QPR(3,j)**2 )
+         OG     = sqrt ( GPR(1,j)**2 + GPR(2,j)**2 + GPR(3,j)**2 )
+         if (OG.ne.0.) then
+            if (OMET.gt.0.001)  FACDEF = OMET*MIN(RMETM,DT_in*OG/OMET)/OG/DT_in
+         endif
+ 
+         QPR(1:3,j) = QPR(1:3,j)  - FACDEF * GPR(1:3,j) * DT_in !minus beacuse defromation is negative
+         
      enddo
 endif
  call remesh_particles_3d(1)
