@@ -231,7 +231,7 @@ if (WhatTodo.lt.4) then
 
       if(IPMWRITE.GT.0) then
         do i=1,IPMWRITE
-      if(NTIME.ge.IPMWSTART(i).and.NTIME.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol(NTIME)
+        if(NTIME.ge.IPMWSTART(i).and.NTIME.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol(NTIME)
         enddo
       endif
          !if (ND.eq.3) then 
@@ -250,8 +250,8 @@ if (WhatTodo.lt.4) then
 
   if (WhatToDo.eq.2) then 
      if (my_rank.eq.0)then 
-
          !call convect_first_order(Xbound,Dpm,NN,NN_bl)
+         velvrx_pm=0;velvry_pm=0;velvrz_pm=0
          call calc_velocity_serial_3d(1)
       !  if(mod(NTIME,NWRITE).eq.0) call writesol(NTIME)
          itypeb=1!normal back to particles
@@ -260,9 +260,10 @@ if (WhatTodo.lt.4) then
                                    Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
 
 
+         iwrite=0
       if(IPMWRITE.GT.0) then
         do i=1,IPMWRITE
-      if(NTIME.ge.IPMWSTART(i).and.NTIME.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol(NTIME)
+       if(NTIME.ge.IPMWSTART(i).and.NTIME.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol(NTIME)
         enddo
       endif
          !if (ND.eq.3) then 
@@ -414,13 +415,13 @@ Subroutine define_sizes
 !-------by nsize i.e with NBI,NBJ,ncoarse,levmax depending on the criterion
 !------that's why ndumcell=0
             if(my_rank.eq.0) then 
-               XMIN_pm=minval(XP(1,1:NVR)) - 2*interf_iproj*DXpm 
-               YMIN_pm=minval(XP(2,1:NVR)) - 2*interf_iproj*DYpm 
-               ZMIN_pm=minval(XP(3,1:NVR)) - 2*interf_iproj*DZpm 
+               XMIN_pm=minval(XP(1,1:NVR))!- 2*interf_iproj*DXpm 
+               YMIN_pm=minval(XP(2,1:NVR))!- 2*interf_iproj*DYpm 
+               ZMIN_pm=minval(XP(3,1:NVR))!- 2*interf_iproj*DZpm 
               
-               XMAX_pm=maxval(XP(1,1:NVR)) + 2*interf_iproj*DXpm 
-               YMAX_pm=maxval(XP(2,1:NVR)) + 2*interf_iproj*DYpm 
-               ZMAX_pm=maxval(XP(3,1:NVR)) + 2*interf_iproj*DZpm 
+               XMAX_pm=maxval(XP(1,1:NVR))!+ 2*interf_iproj*DXpm 
+               YMAX_pm=maxval(XP(2,1:NVR))!+ 2*interf_iproj*DYpm 
+               ZMAX_pm=maxval(XP(3,1:NVR))!+ 2*interf_iproj*DZpm 
             endif
             call MPI_BCAST(XMIN_pm,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
             call MPI_BCAST(YMIN_pm,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
