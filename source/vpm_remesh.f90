@@ -96,12 +96,21 @@ if (my_rank.eq.0) then
     nnod  =1 !if ncell gt 1 particles IN cell else in nodes
     if (ncell.eq.1) nnod=0
     allocate (XC(ncell), YC(ncell), ZC(ncell))
-    nxfin   = NXf_bl(1) -1 + ndum_rem
-    nxstart = NXs_bl(1) - ndum_rem
-    nyfin   = NYf_bl(1) -1 + ndum_rem
-    nystart = NYs_bl(1) - ndum_rem
-    nzfin   = NZf_bl(1) -1 + ndum_rem
-    nzstart = NZs_bl(1) - ndum_rem
+    if (ncell.eq.1) then 
+        nxfin   = NXf_bl(1) - 1
+        nxstart = NXs_bl(1) + 1
+        nyfin   = NYf_bl(1) - 1
+        nystart = NYs_bl(1) + 1 
+        nzfin   = NZf_bl(1) - 1
+        nzstart = NZs_bl(1) + 1 
+    else
+        nxfin   = NXf_bl(1) -1 
+        nxstart = NXs_bl(1) 
+        nyfin   = NYf_bl(1) -1 
+        nystart = NYs_bl(1) 
+        nzfin   = NZf_bl(1) -1 
+        nzstart = NZs_bl(1) 
+    endif
 
     NXpm1   = nxfin - nxstart + 1 
     NYpm1   = nyfin - nystart + 1
@@ -111,8 +120,8 @@ if (my_rank.eq.0) then
     allocate(UPR(3,NVR),GPR(3,NVR))
     XP=>XPR
     QP=>QPR
-    XP=0
-    QP=0
+    XP=0;UPR=0
+    QP=0;GPR=0
     npar = 0
     V_ref = 1.d0/float(ncell)*DVpm
 !!$omp parallel private(i,j,k,npar,X,Y,Z) num_threads(OMPTHREADS)

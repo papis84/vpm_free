@@ -149,13 +149,17 @@ Subroutine diffuse_vort_3d
     DXpm2 =  DXpm**2
     DYpm2 =  DYpm**2 
     DZpm2 =  DZpm**2
-
+    Sol_pm=0.d0
     !$omp parallel private(i,j,k,dwxdx,dwydy,dwzdz,VIS) num_threads(OMPTHREADS)
     !$omp do
     do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
         do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
            do i = NXs_bl(1) + 1, NXf_bl(1) - 1
-                VIS = RHS_pm(4,i,j,k) + NI
+                if (neqpm.eq.3) then 
+                  VIS =  NI
+                else 
+                  VIS = RHS_pm(4,i,j,k) + NI
+                endif
                 !write(*,*) VIS,neqpm
                 !--> Remember that RHS = -w 
                 dwxdx = (RHS_pm(1, i + 1, j, k)  - 2 * RHS_pm(1, i, j, k) &
