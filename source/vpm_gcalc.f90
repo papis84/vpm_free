@@ -28,9 +28,9 @@ Subroutine calc_velocity_serial_3d(idcalc)
                 dpsidy(1:3) = (SOL_pm(1:3,i, j + 1, k)  - SOL_pm(1:3,i, j - 1, k)) / DYpm2
                 dpsidz(1:3) = (SOL_pm(1:3,i, j, k + 1)  - SOL_pm(1:3,i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                velvrx_pm(i, j, k)  = velvrx_pm(i, j, k) +  dpsidy(3) - dpsidz(2)
-                velvry_pm(i, j, k)  = velvry_pm(i, j, k) - (dpsidx(3) - dpsidz(1))
-                velvrz_pm(i, j, k)  = velvrz_pm(i, j, k) +  dpsidx(2) - dpsidy(1)
+                velvrx_pm(i, j, k)  = velvrx_pm(i, j, k) +  dpsidy(3) - dpsidz(2)  
+                velvry_pm(i, j, k)  = velvry_pm(i, j, k) - (dpsidx(3) - dpsidz(1)) 
+                velvrz_pm(i, j, k)  = velvrz_pm(i, j, k) +  dpsidx(2) - dpsidy(1)   
 
                !velvrx_pm(i, j, k)  =  +  dpsidy(3) - dpsidz(2)
                !velvry_pm(i, j, k)  =  - (dpsidx(3) - dpsidz(1))
@@ -208,3 +208,94 @@ Subroutine diffuse_vort_3d
    !!$omp enddo
    !!$omp endparallel
 End Subroutine diffuse_vort_3d 
+
+
+Subroutine calc_antidiffusion
+use vpm_vars         
+use pmeshpar
+use parvar
+use pmgrid
+use openmpth
+Implicit None
+double precision ::  dwxdx, dwydy,dwzdz,Ct
+integer          :: i, j, k
+double precision,allocatable :: laplvort(:,:,:,:)
+
+    allocate (laplvort(3,NXpm,NYpm,NZpm))
+    laplvort=0.d0
+    DXpm2 =  DXpm**2
+    DYpm2 =  DYpm**2 
+    DZpm2 =  DZpm**2
+    Sol_pm=0.d0
+    Ct = 1
+    do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
+        do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
+           do i = NXs_bl(1) + 1, NXf_bl(1) - 1
+                !write(*,*) VIS,neqpm
+                !--> Remember that RHS = -w 
+                dwxdx =-(RHS_pm(1, i + 1, j, k)  - 2 * RHS_pm(1, i, j, k) &
+                       + RHS_pm(1, i - 1, j, k)) / DXpm2
+                dwydy =-(RHS_pm(1, i, j + 1, k)  - 2 * RHS_pm(1, i, j, k) &
+                       + RHS_pm(1, i, j - 1, k)) / DYpm2
+                dwzdz =-(RHS_pm(1, i, j, k + 1)  - 2 * RHS_pm(1, i, j, k) &
+                       + RHS_pm(1, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                laplvort(1,i,j,k)=dwxdx+dwydy+dwzdz
+
+                dwxdx =-(RHS_pm(2, i + 1, j, k)  - 2 * RHS_pm(2, i, j, k) &
+                       + RHS_pm(2, i - 1, j, k)) / DXpm2
+                dwydy =-(RHS_pm(2, i, j + 1, k)  - 2 * RHS_pm(2, i, j, k) &
+                       + RHS_pm(2, i, j - 1, k)) / DYpm2
+                dwzdz =-(RHS_pm(2, i, j, k + 1)  - 2 * RHS_pm(2, i, j, k) &
+                       + RHS_pm(2, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                laplvort(2,i,j,k)=dwxdx+dwydy+dwzdz
+
+                dwxdx =-(RHS_pm(3, i + 1, j, k)  - 2 * RHS_pm(3, i, j, k) &
+                       + RHS_pm(3, i - 1, j, k)) / DXpm2
+                dwydy =-(RHS_pm(3, i, j + 1, k)  - 2 * RHS_pm(3, i, j, k) &
+                       + RHS_pm(3, i, j - 1, k)) / DYpm2
+                dwzdz =-(RHS_pm(3, i, j, k + 1)  - 2 * RHS_pm(3, i, j, k) &
+                       + RHS_pm(3, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                laplvort(3,i,j,k)=dwxdx+dwydy+dwzdz
+            enddo
+        enddo
+    enddo
+
+    do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
+        do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
+           do i = NXs_bl(1) + 1, NXf_bl(1) - 1
+                !write(*,*) VIS,neqpm
+                !Minus because of (-w) has been included in laplvort
+                dwxdx = (laplvort(1, i + 1, j, k)  - 2 * laplvort(1, i, j, k) &
+                       + laplvort(1, i - 1, j, k)) / DXpm2
+                dwydy = (laplvort(1, i, j + 1, k)  - 2 * laplvort(1, i, j, k) &
+                       + laplvort(1, i, j - 1, k)) / DYpm2
+                dwzdz = (laplvort(1, i, j, k + 1)  - 2 * laplvort(1, i, j, k) &
+                       + laplvort(1, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                Sol_pm(1,i,j,k)=Sol_pm(1,i,j,k) - Ct*dwxdx+dwydy+dwzdz
+
+                dwxdx = (laplvort(2, i + 1, j, k)  - 2 * laplvort(2, i, j, k) &
+                       + laplvort(2, i - 1, j, k)) / DXpm2
+                dwydy = (laplvort(2, i, j + 1, k)  - 2 * laplvort(2, i, j, k) &
+                       + laplvort(2, i, j - 1, k)) / DYpm2
+                dwzdz = (laplvort(2, i, j, k + 1)  - 2 * laplvort(2, i, j, k) &
+                       + laplvort(2, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                Sol_pm(2,i,j,k)=Sol_pm(2,i,j,k) - Ct*dwxdx+dwydy+dwzdz
+
+                dwxdx = (laplvort(3, i + 1, j, k)  - 2 * laplvort(3, i, j, k) &
+                       + laplvort(3, i - 1, j, k)) / DXpm2
+                dwydy = (laplvort(3, i, j + 1, k)  - 2 * laplvort(3, i, j, k) &
+                       + laplvort(3, i, j - 1, k)) / DYpm2
+                dwzdz = (laplvort(3, i, j, k + 1)  - 2 * laplvort(3, i, j, k) &
+                       + RHS_pm(3, i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                Sol_pm(3,i,j,k)=Sol_pm(3,i,j,k) - Ct*dwxdx+dwydy+dwzdz
+            enddo
+        enddo
+    enddo
+
+End Subroutine calc_antidiffusion

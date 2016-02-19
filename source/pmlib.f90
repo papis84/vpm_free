@@ -246,7 +246,38 @@ contains
             NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1
             NN(2) = int(nint(abs(Xbound(5) - Xbound(2))/ (Dpm(2)))) + 1
             if(ND.eq.3) NN(3) = int(nint(abs(Xbound(6) - Xbound(3))/ (Dpm(3)))) + 1
-           
+        else if (itype.eq.4) then 
+            Xbound(1) = Xbound(1) - ((ndum_new(1)) * Dpm(1))
+            Xbound(4) = Xbound(4) + ((ndum_new(1)) * Dpm(1))
+            
+            NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1 
+            NN(2) = int(nint(abs(Xbound(5) - Xbound(2))/ (Dpm(2)))) + 1 
+            if(ND.eq.3) NN(3) = int(nint(abs(Xbound(6) - Xbound(3))/ (Dpm(3)))) + 1 
+            ndum_new(1)  = nsize(1) - mod(NN(1)-1,nsize(1))
+            ndum_new(2)  = nsize(2) - mod(NN(2)-1,nsize(2))
+            ndum_new(3)  = nsize(3) - mod(NN(3)-1,nsize(3))
+           !if (mod(ndum_new(1),2).ne.0) then 
+           !   write(*,*) 'error sizes',ndum_new,nsize(1),NN(1)
+         ! !   stop
+           !endif
+           !if (mod(ndum_new(2),2).ne.0) then 
+           !   write(*,*) 'error sizes',ndum_new,nsize(2),NN(2)
+         ! !   stop
+           !endif
+           !if (mod(ndum_new(3),2).ne.0.and.ND.eq.3) then 
+           !   write(*,*) 'error sizes',ndum_new,nsize(3),NN(3)
+         ! !   stop
+           !endif
+               ndum_new(1)= ndum_new(1)
+               Xbound(4) = Xbound(4) + ((ndum_new(1)) * Dpm(1))
+               ndum_new(1)= ndum_new(1)+ndum
+               NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1
+               NN_bl(1) = ndum_new(1) + 1
+               NN_bl(4) = NN(1) - ndum_new(1)
+               return
+
+            
+
         else if (itype.eq.2) then 
 !Itype 2 extends the domain by ndum_new cells and changes Dpm so that the number
 !of cells are divided exactly by nsize

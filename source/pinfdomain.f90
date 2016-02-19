@@ -152,54 +152,17 @@ Subroutine infdomain_3d(neqs,neqf)
     NZs = 1     !NZs_bl(1)
     NZf = NZpm  !NZf_bl(1)
     if(my_rank.eq.0) st=MPI_WTIME()
-    if(ibctyp.lt.1000) then 
-       if (itree.eq.1) then 
-          call Bounds3d_lev(ibctyp,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
-          deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,zs_lev,nbound_lev)
-          deallocate(source_bound,d_s,x_s,y_s,z_s)
-       else if (itree.eq.2) then 
-          call Bounds3d_lev_new(ibctyp,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
-          deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,zs_lev,nbound_lev,ilev_t)
-          deallocate(source_bound,d_s,x_s,y_s,z_s)
-       else 
-          call Bounds3d(ibctyp,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
-          deallocate(source_bound,d_s,x_s,y_s,z_s)
-       endif
-    else
-      ibctypn=ibctyp-1000
-       if (itree.eq.1) then 
-          call Bounds3d_lev(ibctypn,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
-          deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,zs_lev,nbound_lev)
-          deallocate(source_bound,d_s,x_s,y_s,z_s)
-       else if (itree.eq.2) then 
-          ip=3;jp=3;kp=3
-          DDX = (NXf_bl(1)-NXs_bl(1))*DXpm
-          DDY = (NYf_bl(1)-NYs_bl(1))*DYpm
-          DDZ = (NZf_bl(1)-NZs_bl(1))*DZpm
- 
-          allocate (xs_lev0(nbound,0:levmax,2)); xs_lev0     = xs_lev
-          allocate (ys_lev0(nbound,0:levmax,2)); ys_lev0     = ys_lev
-          allocate (zs_lev0(nbound,0:levmax,2)); zs_lev0     = zs_lev
-          xs_lev0 = xs_lev0-(nint(ip/2.)-1)*DDX
-          ys_lev0 = ys_lev0-(nint(jp/2.)-1)*DDY
-          zs_lev0 = zs_lev0-(nint(kp/2.)-1)*DDZ
-           write(*,*) nint(ip/2.)
-          do k=1,kp
-             do j=1,jp
-                do i=1,ip
-                   xs_lev = xs_lev0 +(i-1)*DDX
-                   ys_lev = ys_lev0 +(j-1)*DDY
-                   zs_lev = zs_lev0 +(k-1)*DDZ
-                   call Bounds3d_lev_new(ibctypn,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
-                enddo
-              enddo
-          enddo
-          deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,zs_lev,nbound_lev,ilev_t)
-          deallocate(source_bound,d_s,x_s,y_s,z_s)
-       else 
-          call Bounds3d(ibctypn,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
-          deallocate(source_bound,d_s,x_s,y_s,z_s)
-       endif
+    if (itree.eq.1) then 
+       call Bounds3d_lev(ibctyp,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
+       deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,zs_lev,nbound_lev)
+       deallocate(source_bound,d_s,x_s,y_s,z_s)
+    else if (itree.eq.2) then 
+       call Bounds3d_lev_new(ibctyp,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
+       deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,zs_lev,nbound_lev,ilev_t)
+       deallocate(source_bound,d_s,x_s,y_s,z_s)
+    else 
+       call Bounds3d(ibctyp,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
+       deallocate(source_bound,d_s,x_s,y_s,z_s)
     endif
     if(my_rank.eq.0) then 
         et=MPI_WTIME()

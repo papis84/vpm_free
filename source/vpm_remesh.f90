@@ -17,13 +17,15 @@ Subroutine remesh_particles_3d(iflag)
 ! double precision,intent(inout):: XP_in(:,:),QP_in(:,:)
   double precision    :: X(8), Y(8),Z(8),Vol,XMIN_vr,YMIN_vr,DXvr,DYvr,ANG,dens1,dens2,Mach,DZvr,ZMIN_vr
   double precision, allocatable:: XC(:), YC(:), ZC(:)
+  double precision, allocatable,target::XP_tmp(:,:),QP_tmp(:,:)
   integer             :: i ,j ,k, NXpm1, NYpm1, NZpm1, ncell, npar,ndumc,nv,inode,jnode,knode,itype
-  integer             :: nxstart, nxfin, nystart, nyfin, nzstart, nzfin,ndum_rem,nnod,nc 
+  integer             :: nxstart, nxfin, nystart, nyfin, nzstart, nzfin,ndum_rem,nnod,nc,iis,jjs,kks,iif,jjf,kkf
+  integer             :: iis2,jjs2,kks2,iif2,jjf2,kkf2
   double precision    :: fx,fy,f,projection_fun
   integer,allocatable :: ieq(:)
-  double precision    :: Xbound(6), Dpm(3)
+  double precision    :: Xbound(6), Dpm(3),wmag
   double precision    :: w1,w2,r1,r2,core,radi,th,xx,yy
-  double precision,allocatable :: QINF(:)
+  double precision,allocatable :: QINF(:),rhsper(:,:,:,:)
   integer             :: my_rank,ierr,np,NN(3),NN_bl(6)
 
     call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
@@ -41,24 +43,33 @@ Subroutine remesh_particles_3d(iflag)
     Xbound(1) = XMIN_pm;Xbound(2) = YMIN_pm ;Xbound(3)= ZMIN_pm 
     Xbound(4) = XMAX_pm;Xbound(5) = YMAX_pm ;Xbound(6)= ZMAX_pm 
 !->PM grid is orthogonal (Volume of PM cell
-DVpm = DXvr * DYvr  * DZvr
 
 !--------------------------------------------------------------------------------!
 !-->The loops starts from 2 because we need cells that DO NOT contain particles  !
 !-->Total Number of Cells                                                        !
 !--------------------------------------------------------------------------------!
-
  NN(1) = NXpm; NN(2)= NYpm; NN(3)= NZpm
  NN_bl(1) = NXs_bl(1);NN_bl(2)= NYs_bl(1);NN_bl(3)=NZs_bl(1) 
  NN_bl(4) = NXf_bl(1);NN_bl(5)= NYf_bl(1);NN_bl(6)=NZf_bl(1) 
+
+ NN = NN *  mrem
+ NN_bl = NN_bl *mrem
+ Dpm(1) = (Xbound(4)-Xbound(1))/(NN(1)-1)
+ Dpm(2) = (Xbound(5)-Xbound(2))/(NN(2)-1)
+ Dpm(3) = (Xbound(6)-Xbound(3))/(NN(3)-1)
+
+DVpm = Dpm(1)*Dpm(2)*Dpm(3)
+if (my_rank.eq.0) then 
+NVR=NVR_ext
  XP=>XPR
  QP=>QPR
+endif
 if(iflag.eq.1) then
        if (allocated(RHS_pm)) then 
            deallocate(RHS_pm)
-           allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+           allocate(RHS_pm(neqpm+1,NN(1),NN(2),NN(3)))
        else
-           allocate(RHS_pm(neqpm+1,NXpm,NYpm,NZpm))
+           allocate(RHS_pm(neqpm+1,NN(1),NN(2),NN(3)))
        endif
        call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
        NVR_p=NVR/np
@@ -90,38 +101,37 @@ if(iflag.eq.1) then
 endif
 
 if (my_rank.eq.0) then 
-    deallocate(XPR,QPR,UPR,GPR)
+    deallocate(XPR,QPR)
     ncell =ncell_rem
     ndum_rem=2
     nnod  =1 !if ncell gt 1 particles IN cell else in nodes
     if (ncell.eq.1) nnod=0
     allocate (XC(ncell), YC(ncell), ZC(ncell))
     if (ncell.eq.1) then 
-        nxfin   = NXf_bl(1) - 1
-        nxstart = NXs_bl(1) + 1
-        nyfin   = NYf_bl(1) - 1
-        nystart = NYs_bl(1) + 1 
-        nzfin   = NZf_bl(1) - 1
-        nzstart = NZs_bl(1) + 1 
+        nxfin   = NN_bl(4)  -interf_iproj/2 
+        nxstart = NN_bl(1)  +interf_iproj/2 
+        nyfin   = NN_bl(5)  -interf_iproj/2 
+        nystart = NN_bl(2)  +interf_iproj/2  
+        nzfin   = NN_bl(6)  -interf_iproj/2 
+        nzstart = NN_bl(3)  +interf_iproj/2   
     else
-        nxfin   = NXf_bl(1) -1 
-        nxstart = NXs_bl(1) 
-        nyfin   = NYf_bl(1) -1 
-        nystart = NYs_bl(1) 
-        nzfin   = NZf_bl(1) -1 
-        nzstart = NZs_bl(1) 
+        nxfin   = NN_bl(4) -1 
+        nxstart = NN_bl(1) 
+        nyfin   = NN_bl(5) -1 
+        nystart = NN_bl(2) 
+        nzfin   = NN_bl(6) -1 
+        nzstart = NN_bl(3) 
     endif
 
     NXpm1   = nxfin - nxstart + 1 
     NYpm1   = nyfin - nystart + 1
     NZpm1   = nzfin - nzstart + 1
     NVR       =  NXpm1*NYpm1*NZpm1*ncell
-    allocate(XPR(3,NVR),QPR(neqpm+1,NVR))
-    allocate(UPR(3,NVR),GPR(3,NVR))
-    XP=>XPR
-    QP=>QPR
-    XP=0;UPR=0
-    QP=0;GPR=0
+    allocate(XP_tmp(3,NVR),QP_tmp(neqpm+1,NVR))
+    XP=>XP_tmp
+    QP=>QP_tmp
+    XP=0
+    QP=0
     npar = 0
     V_ref = 1.d0/float(ncell)*DVpm
 !!$omp parallel private(i,j,k,npar,X,Y,Z) num_threads(OMPTHREADS)
@@ -130,34 +140,34 @@ if (my_rank.eq.0) then
     do j = nystart, nyfin
      do i = nxstart, nxfin
 ! !-> Get PM cell nodes (orthogonal structured grid    
-         X(1) = XMIN_pm + DXpm * (i-1)
-         X(2) = XMIN_pm + DXpm * (i)
-         X(3) = XMIN_pm + DXpm * (i)
-         X(4) = XMIN_pm + DXpm * (i-1)
-         X(5) = XMIN_pm + DXpm * (i-1)
-         X(6) = XMIN_pm + DXpm * (i)
-         X(7) = XMIN_pm + DXpm * (i)
-         X(8) = XMIN_pm + DXpm * (i-1)
+         X(1) = XMIN_pm + Dpm(1) * (i-1)
+         X(2) = XMIN_pm + Dpm(1) * (i)
+         X(3) = XMIN_pm + Dpm(1) * (i)
+         X(4) = XMIN_pm + Dpm(1) * (i-1)
+         X(5) = XMIN_pm + Dpm(1) * (i-1)
+         X(6) = XMIN_pm + Dpm(1) * (i)
+         X(7) = XMIN_pm + Dpm(1) * (i)
+         X(8) = XMIN_pm + Dpm(1) * (i-1)
               
-         Y(1) = YMIN_pm + DYpm * (j-1)
-         Y(2) = YMIN_pm + DYpm * (j-1)
-         Y(3) = YMIN_pm + DYpm * (j)
-         Y(4) = YMIN_pm + DYpm * (j)
-         Y(5) = YMIN_pm + DYpm * (j-1)
-         Y(6) = YMIN_pm + DYpm * (j-1)
-         Y(7) = YMIN_pm + DYpm * (j)
-         Y(8) = YMIN_pm + DYpm * (j)
+         Y(1) = YMIN_pm + Dpm(2) * (j-1)
+         Y(2) = YMIN_pm + Dpm(2) * (j-1)
+         Y(3) = YMIN_pm + Dpm(2) * (j)
+         Y(4) = YMIN_pm + Dpm(2) * (j)
+         Y(5) = YMIN_pm + Dpm(2) * (j-1)
+         Y(6) = YMIN_pm + Dpm(2) * (j-1)
+         Y(7) = YMIN_pm + Dpm(2) * (j)
+         Y(8) = YMIN_pm + Dpm(2) * (j)
               
-         Z(1) = ZMIN_pm + DZpm * (k-1)
-         Z(2) = ZMIN_pm + DZpm * (k-1)
-         Z(3) = ZMIN_pm + DZpm * (k-1)
-         Z(4) = ZMIN_pm + DZpm * (k-1)
-         Z(5) = ZMIN_pm + DZpm * (k)
-         Z(6) = ZMIN_pm + DZpm * (k)
-         Z(7) = ZMIN_pm + DZpm * (k)
-         Z(8) = ZMIN_pm + DZpm * (k)
+         Z(1) = ZMIN_pm + Dpm(3) * (k-1)
+         Z(2) = ZMIN_pm + Dpm(3) * (k-1)
+         Z(3) = ZMIN_pm + Dpm(3) * (k-1)
+         Z(4) = ZMIN_pm + Dpm(3) * (k-1)
+         Z(5) = ZMIN_pm + Dpm(3) * (k)
+         Z(6) = ZMIN_pm + Dpm(3) * (k)
+         Z(7) = ZMIN_pm + Dpm(3) * (k)
+         Z(8) = ZMIN_pm + Dpm(3) * (k)
 
-        npar = ((k-nzstart)*NXpm1*NYpm1 +(j-nystart)*NXpm1 + i-nxstart)*ncell
+       !npar = ((k-nzstart)*NXpm1*NYpm1 +(j-nystart)*NXpm1 + i-nxstart)*ncell
 
         if (ncell.gt.1) then 
            call cell3d_interp_euler(X, XC,ncell,2)
@@ -172,6 +182,8 @@ if (my_rank.eq.0) then
            enddo
 
         else
+            wmag = sqrt(RHS_pm(1,i,j,k)**2 +RHS_pm(2,i,j,k)**2+RHS_pm(3,i,j,k)**2)
+            if (wmag.lt.1e-09) cycle
             npar = npar + 1
             XP(1,npar)= X(1)
             XP(2,npar)= Y(1)
@@ -187,11 +199,19 @@ if (my_rank.eq.0) then
    enddo
  ! !$omp enddo
  ! !$omp endparallel
-
-   if (ncell.gt.1) call back_to_particles_3D_rem(RHS_pm,XP,QP,Xbound,Dpm,NN,NVR,2)
+    NVR=npar
+    NVR_ext=NVR
+    NVR_size=NVR
+    allocate(XPR(3,NVR),QPR(neqpm+1,NVR))
+    XPR(1:3,1:NVR)=XP_tmp(1:3,1:NVR)
+    QPR(1:neqpm+1,1:NVR)=QP_tmp(1:neqpm+1,1:NVR)
+    deallocate(XP_tmp,QP_tmp)
+    XP=>XPR
+    QP=>QPR
+   if (ncell.gt.1) call back_to_particles_3D_rem(RHS_pm,XP,QP,Xbound,Dpm,NN,NVR,4)
    if (iflag.eq.0) deallocate(RHS_pm)
 
-write(*,*) 'remesh complete',NVR,npar,DVpm,maxval(QP(neqpm,:))
+write(*,*) 'remesh complete',NVR,npar,DVpm,maxval(QPR(neqpm,:))
 endif
 !call back_to_particles_2D(4)
 
@@ -205,7 +225,6 @@ endif
  !     call system('rm vr.dat')
 !!----FOR PLOTTING PURPOSES ONLY
  ! close(1)
-NVR_ext=NVR
 deallocate(RHS_pm)
 End Subroutine remesh_particles_3d
 

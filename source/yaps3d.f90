@@ -206,15 +206,15 @@
         if(my_rank.eq.0)starttime = MPI_WTIME()
         if (itree.eq.0) levmax=1
         call pmesh(SOL_pm_coarse,RHS_pm_coarse,QP,XP,&
-             Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,1,1002,neqs,neqf,iynbc,0,itree,lmax)
+             Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
         ! if(my_rank.eq.1)endtime = MPI_WTIME()
         ! if(my_rank.eq.1) write(*,*)'Poisson Coarse=',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
           if(my_rank.eq.0)endtime = MPI_WTIME()
           if(my_rank.eq.0) write(199,*)'pmesh_coarse',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
        !if (my_rank.eq.0) then
-            !outfil2='coarse_laplacian'
-            !call writegrow(RHS_pm_coarse,SOL_pm_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
+       !     outfil2='coarse_laplacian'
+       !     call writegrow_3d(RHS_pm_coarse,SOL_pm_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
        !endif
         ! Interpolate to all blocks
         

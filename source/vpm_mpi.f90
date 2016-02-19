@@ -357,7 +357,6 @@ Subroutine particles_scat
     call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
 
     !---------------------------------------------
-
     if (my_rank.eq.0) then 
         XP_scatt(1:3,1:NVR_p)= XP(1:3,1:NVR_p)
         QP_scatt(1:neqpm+1,1:NVR_p)= QP(1:neqpm+1,1:NVR_p)

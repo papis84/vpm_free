@@ -139,7 +139,6 @@ Subroutine Bounds3d(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
     else if (itype.eq.2) then
         call calc_boundinf_3d(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
     else if (itype.eq.3) then 
-        call calc_boundinf_3d_s(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
     endif
     !-->ZMAX
     kconst = NZf
@@ -1208,7 +1207,8 @@ End Subroutine Bounds3d_lev
 Subroutine Bounds3d_lev_new(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
     Implicit None
     integer,intent(in):: itype, NXs, NXf, NYs, NYf, NZs, NZf,neqs,neqf
-    integer           :: iconst, jconst, kconst, iplane
+    integer           :: iconst, jconst, kconst, iplane,ip,jp,kp,i,j,k
+    double precision  :: XMIN,YMIN,ZMIN,XMIN0,YMIN0,ZMIN0,DDX,DDY,DDZ
     !-->Calculate boundary conditions for each boundary (XMIN,XMAX,YMIN,YMAX)
     !-->iplane is the plane of calculation of the bc's (i.e. for X=const a Y plane is defined)
     !-->iconst defines the poisition of the plane to be calculated
@@ -1218,12 +1218,31 @@ Subroutine Bounds3d_lev_new(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
     !-->XMIN
     iconst = Nxs
     iplane  = 2
+    DDX= XMIN_pm + (NXf_bl(1)-NXs_bl(1))*DXpm
+    DDY= YMIN_pm + (NYf_bl(1)-NYs_bl(1))*DYpm
+    DDZ= ZMIN_pm + (NZf_bl(1)-NZs_bl(1))*DZpm
+    ip=1;jp=3;kp=3
+    XMIN0 = XMIN_pm -(nint(ip/2.)-1)*DDX
+    YMIN0 = YMIN_pm -(nint(jp/2.)-1)*DDY
+    ZMIN0 = ZMIN_pm -(nint(kp/2.)-1)*DDZ
     if (itype.eq.1) then
         call calc_bound3d(iplane ,iconst, NYs, NYf, NZs, NZf,neqs,neqf)
     else if (itype.eq.2) then
         call calc_boundinf_3d_lev_new(iplane ,iconst ,NYs ,NYf ,NZs,NZf,neqs,neqf)
     else if (itype.eq.3) then
         call calc_boundinf_3d_lev_snew(iplane ,iconst ,NYs ,NYf ,NZs,NZf,neqs,neqf)
+    else if (itype.eq.1002) then 
+         
+        do k=1,kp
+           do j= 1,jp
+              do i= 1,ip
+                 XMIN = XMIN0 + (i-1)*DDX
+                 YMIN = YMIN0 + (j-1)*DDY
+                 ZMIN = ZMIN0 + (k-1)*DDZ
+                 call calc_boundinf_3d_lev_newper(iplane,iconst,NYs,NYf,NZs,NZf,neqs,neqf,XMIN,YMIN,ZMIN)
+              enddo
+           enddo
+        enddo
     endif
     !-->XMAX
     iconst = NXf
@@ -1234,6 +1253,17 @@ Subroutine Bounds3d_lev_new(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
     else if (itype.eq.3) then
         iplane = -iplane
         call calc_boundinf_3d_lev_snew(iplane, iconst, NYs, NYf, NZs, NZf,neqs,neqf)
+    else if (itype.eq.1002) then 
+        do k=1,kp
+           do j= 1,jp
+              do i= 1,ip
+                 XMIN = XMIN0 + (i-1)*DDX
+                 YMIN = YMIN0 + (j-1)*DDY
+                 ZMIN = ZMIN0 + (k-1)*DDZ
+                 call calc_boundinf_3d_lev_newper(iplane,iconst,NYs,NYf,NZs,NZf,neqs,neqf,XMIN,YMIN,ZMIN)
+              enddo
+           enddo
+        enddo
     endif
 
     !We use Nxs + 1,NXf - 1 For corners since they already calculated
@@ -1246,6 +1276,17 @@ Subroutine Bounds3d_lev_new(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
         call calc_boundinf_3d_lev_new(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
     else if (itype.eq.3) then
         call calc_boundinf_3d_lev_snew(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
+    else if (itype.eq.1002) then 
+        do k=1,kp
+           do j= 1,jp
+              do i= 1,ip
+                 XMIN = XMIN0 + (i-1)*DDX
+                 YMIN = YMIN0 + (j-1)*DDY
+                 ZMIN = ZMIN0 + (k-1)*DDZ
+                 call calc_boundinf_3d_lev_newper(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf,XMIN,YMIN,ZMIN)
+              enddo
+           enddo
+        enddo
     endif
     !-->YMAX
     jconst = NYf
@@ -1256,6 +1297,17 @@ Subroutine Bounds3d_lev_new(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
     else if (itype.eq.3) then
         iplane =-iplane
         call calc_boundinf_3d_lev_snew(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf)
+    else if (itype.eq.1002) then 
+        do k=1,kp
+           do j= 1,jp
+              do i= 1,ip
+                 XMIN = XMIN0 + (i-1)*DDX
+                 YMIN = YMIN0 + (j-1)*DDY
+                 ZMIN = ZMIN0 + (k-1)*DDZ
+                 call calc_boundinf_3d_lev_newper(iplane,jconst,NXs+1,NXf-1,NZs,NZf,neqs,neqf,XMIN,YMIN,ZMIN)
+              enddo
+           enddo
+        enddo
     endif
 
     !-->ZMIN
@@ -1267,6 +1319,17 @@ Subroutine Bounds3d_lev_new(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
         call calc_boundinf_3d_lev_new(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
     else if (itype.eq.3) then
         call calc_boundinf_3d_lev_snew(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
+    else if (itype.eq.1002) then 
+        do k=1,kp
+           do j= 1,jp
+              do i= 1,ip
+                 XMIN = XMIN0 + (i-1)*DDX
+                 YMIN = YMIN0 + (j-1)*DDY
+                 ZMIN = ZMIN0 + (k-1)*DDZ
+                 call calc_boundinf_3d_lev_newper(iplane,kconst,NXs+1,NXf-1,NZs+1,NZf-1,neqs,neqf,XMIN,YMIN,ZMIN)
+              enddo
+           enddo
+        enddo
     endif
     !-->ZMAX
     kconst = NZf
@@ -1277,6 +1340,17 @@ Subroutine Bounds3d_lev_new(itype,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
     else if (itype.eq.3) then
         iplane  = -iplane
         call calc_boundinf_3d_lev_snew(iplane,kconst,NXs+1,NXf-1,NYs+1,NYf-1,neqs,neqf)
+    else if (itype.eq.1002) then 
+        do k=1,kp
+           do j= 1,jp
+              do i= 1,ip
+                 XMIN = XMIN0 + (i-1)*DDX
+                 YMIN = YMIN0 + (j-1)*DDY
+                 ZMIN = ZMIN0 + (k-1)*DDZ
+                 call calc_boundinf_3d_lev_newper(iplane,kconst,NXs+1,NXf-1,NZs+1,NZf-1,neqs,neqf,XMIN,YMIN,ZMIN)
+              enddo
+           enddo
+        enddo
     endif
 
 
@@ -1901,6 +1975,83 @@ Recursive Subroutine tree_calc_3d_snew(nv,nlev,leafstart,branch,XO,SOURCE,neqs,n
    enddo
 
 End Subroutine tree_calc_3d_snew
+
+Subroutine calc_boundinf_3d_lev_newper(iplane,iconst,Ns,Nf,Ns2,Nf2,neqs,neqf,XMIN,YMIN,ZMIN)
+    Implicit None
+
+    integer, intent(in) :: iplane, iconst,Ns,Nf,Ns2,Nf2,neqs,neqf
+    double precision,intent(in) :: XMIN,YMIN,ZMIN
+    double precision    :: X, Y, XR, YR,Z, ZR,r, a,b,ra,rb,greenint,racos,rasin,DS,SOURCE(1:neqf)
+    integer             :: i, j, k,nv
+    integer             :: leafstart,branch
+    !-->Y=constant plane
+    if (abs(iplane).eq.1) then
+        Y = YMIN + (iconst - 1) * DYpm
+        !calculate bc's of all sources on the specified plane defined at iconst
+      ! do nv = 1, nbound_lev(0)
+            nv=1
+            do k = Ns2,Nf2
+                do i = Ns,Nf
+                    Z  = ZMIN + (k - 1)   * DZpm
+                    X  = XMIN + (i - 1)   * DXpm
+
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+
+                    call tree_calc_3d_new(nv,levmax,leafstart,branch,X,Y,Z,SOURCE,neqs,neqf)
+                    SOL_pm(neqs:neqf,i, iconst, k) = SOL_pm(neqs:neqf,i, iconst, k) + SOURCE(neqs:neqf)/PI4 
+                enddo
+            enddo
+     !  enddo
+        !-->X=constant plane
+    else if (abs(iplane).eq.2) then
+        X = XMIN + (iconst - 1) * DXpm
+
+     !  do nv = 1, nbound_lev(0)
+            nv=1
+            do k = Ns2,Nf2
+                do j = Ns,Nf !Because corners are calculated twice
+                    Z  = ZMIN + (k - 1)   * DZpm
+                    Y  = YMIN + (j - 1) * DYpm
+
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+
+                    call tree_calc_3d_new(nv,levmax,leafstart,branch,X,Y,Z,SOURCE,neqs,neqf)
+                    SOL_pm(neqs:neqf,iconst, j , k) = SOL_pm(neqs:neqf,iconst,j, k)  + SOURCE(neqs:neqf)/PI4 
+
+                enddo
+            enddo
+     !  enddo
+
+    else if (abs(iplane).eq.3) then
+        Z = ZMIN + (iconst - 1) * DZpm
+
+       !do nv = 1, nbound_lev(0)
+            nv=1
+            do j = Ns2,Nf2 !Because corners are calculated twice
+                do i = Ns,Nf
+                    X  = XMIN + (i - 1)   * DXpm
+                    Y  = YMIN + (j - 1) * DYpm
+
+                    SOURCE    =0.d0
+                    leafstart = 0
+                    branch    = 1
+                    call tree_calc_3d_new(nv,levmax,leafstart,branch,X,Y,Z,SOURCE,neqs,neqf)
+                    SOL_pm(neqs:neqf,i, j , iconst) = SOL_pm(neqs:neqf,i,j, iconst) + SOURCE(neqs:neqf)/PI4 
+
+                enddo
+            enddo
+       !enddo
+
+    endif
+
+
+End Subroutine calc_boundinf_3d_lev_newper
 
 !Subroutine PHIELS calculates the potential induced by constant panels'
 ! XO is the point of calculation X1,Y1 is the first corner of the constant panel
