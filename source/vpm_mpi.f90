@@ -278,6 +278,7 @@ Subroutine solget_3d(BLOCKS,NBI,NBJ,NBK,NN_tmp,NNbl,NNbl_bl,NN_bl,SOL_pm_bl)
         kxf= kxs + (NZf-NZs+1)-1
 
         SOL_pm(1:neqpm,ixs:ixf,jxs:jxf,kxs:kxf)= SOL_pm_bl(1:neqpm,NXs:NXf,NYs:NYf,NZs:NZf)
+       !write(*,*) maxval(SOL_pm_bl),minval(SOL_pm_bl)
         !-->Assign
         do k=1,NBK
            do j=1,NBJ
@@ -294,6 +295,10 @@ Subroutine solget_3d(BLOCKS,NBI,NBJ,NBK,NN_tmp,NNbl,NNbl_bl,NN_bl,SOL_pm_bl)
 
                    NZs = NNbl_bl(3,nbs)
                    NZf = NNbl_bl(6,nbs)
+
+                   ixs=(i-1)*(NXf-NXs)+NN_bl(1)
+                   jxs=(j-1)*(NYf-NYs)+NN_bl(2)
+                   kxs=(k-1)*(NZf-NZs)+NN_bl(3)
 
                    ixs=(i-1)*(NXf-NXs)+NN_bl(1)
                    jxs=(j-1)*(NYf-NYs)+NN_bl(2)
@@ -394,6 +399,86 @@ Subroutine particles_scat
    !   write(15,'(7(e28.17,1x))') XP_scatt(1:3,i)!,QP_scatt(1:neqpm+1,i)
    !enddo
 End Subroutine particles_scat
+
+Subroutine particles_gath
+    use vpm_vars        
+    use pmgrid
+    use pmeshpar
+    use parvar
+    use MPI
+    
+    Implicit None
+    integer :: my_rank,np,ierr,i
+    integer :: dest,NVR_pr,NVR_r,source,mat2
+    integer :: status(MPI_STATUS_SIZE)
+    character *15 :: filname,filname2
+    call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
+    call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
+
+    !---------------------------------------------
+    if (my_rank.eq.0) then 
+        XP(1:3,1:NVR_p)= XP_scatt(1:3,1:NVR_p)
+        QP(1:neqpm+1,1:NVR_p)= QP_scatt(1:neqpm+1,1:NVR_p)
+        UP(1:3,1:NVR_p)= UP_scatt(1:3,1:NVR_p)
+        GP(1:3,1:NVR_p)= GP_scatt(1:3,1:NVR_p)
+        deallocate(QP_scatt,XP_scatt,UP_scatt,GP_scatt)
+        NVR_pr = NVR_p
+        NVR_r  = NVR/np
+        allocate(XP_scatt(3,NVR_r),QP_scatt(neqpm+1,NVR_r),UP_scatt(3,NVR_r),GP_scatt(3,NVR_r))
+        if (NVR_r.gt.0)  then 
+            do i=2,np
+               dest = i-1
+               call mpimat2_pm(mat2,3,NVR_r,3,NVR_r,0)!NVR_pr because counting starts from 0
+               call MPI_RECV(XP_scatt,1,mat2,dest,1,MPI_COMM_WORLD,status,ierr)
+               call MPI_TYPE_FREE(mat2,ierr)
+           
+               call mpimat2_pm(mat2,neqpm+1,NVR_r,neqpm+1,NVR_r,0)
+               call MPI_RECV(QP_scatt,1,mat2,dest,1,MPI_COMM_WORLD,status,ierr)
+               call MPI_TYPE_FREE(mat2,ierr)
+
+               call mpimat2_pm(mat2,3,NVR_r,3,NVR_r,0)!NVR_pr because counting starts from 0
+               call MPI_RECV(UP_scatt,1,mat2,dest,1,MPI_COMM_WORLD,status,ierr)
+               call MPI_TYPE_FREE(mat2,ierr)
+
+               call mpimat2_pm(mat2,3,NVR_r,3,NVR_r,0)!NVR_pr because counting starts from 0
+               call MPI_RECV(GP_scatt,1,mat2,dest,1,MPI_COMM_WORLD,status,ierr)
+               call MPI_TYPE_FREE(mat2,ierr)
+
+               XP(1:3,NVR_pr+1:NVR_pr+NVR_r)= XP_scatt(1:3,1:NVR_r)
+               QP(1:neqpm+1,NVR_pr+1:NVR_pr+NVR_r)= QP_scatt(1:neqpm+1,1:NVR_r)
+               UP(1:3,NVR_pr+1:NVR_pr+NVR_r)= UP_scatt(1:3,1:NVR_r)
+               GP(1:3,NVR_pr+1:NVR_pr+NVR_r)= GP_scatt(1:3,1:NVR_r)
+
+               NVR_pr=NVR_pr+NVR_r
+            enddo
+        endif
+    else
+       if (NVR_p.gt.0) then 
+          call mpimat2_pm(mat2,3,NVR_p,3,NVR_p,0)
+          call MPI_SEND(XP_scatt,1,mat2,0,1,MPI_COMM_WORLD,ierr)
+          call MPI_TYPE_FREE(mat2,ierr)
+          
+          call mpimat2_pm(mat2,neqpm+1,NVR_p,neqpm+1,NVR_p,0)
+          call MPI_SEND(QP_scatt,1,mat2,0,1,MPI_COMM_WORLD,ierr)
+          call MPI_TYPE_FREE(mat2,ierr)
+
+          call mpimat2_pm(mat2,3,NVR_p,3,NVR_p,0)
+          call MPI_SEND(UP_scatt,1,mat2,0,1,MPI_COMM_WORLD,ierr)
+          call MPI_TYPE_FREE(mat2,ierr)
+          
+          call mpimat2_pm(mat2,3,NVR_p,3,NVR_p,0)
+          call MPI_SEND(GP_scatt,1,mat2,0,1,MPI_COMM_WORLD,ierr)
+          call MPI_TYPE_FREE(mat2,ierr)
+       endif
+    endif
+
+   !write(filname,'(i1)') my_rank+1
+   !open(15,file=filname)
+   !write(15,*) 'VARIABLES="X" "Y" "Z"'
+   !do i = 1,NVR_p
+   !   write(15,'(7(e28.17,1x))') XP_scatt(1:3,i)!,QP_scatt(1:neqpm+1,i)
+   !enddo
+End Subroutine particles_gath
 
 Subroutine proj_gath(NN)
     use vpm_vars       

@@ -45,8 +45,8 @@
         call pmesh(SOL_pm_bl,RHS_pm_bl,QP,XP,&
                    Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
 
-       ! write(outfil1,'(a9,i2.2)') 'blockgrow',nb
-       ! call  writesol_bl_3d(outfil1,Dpm_fine,Xbound_tmp,NN_bl_tmp,NN_tmp)
+        !write(outfil1,'(a9,i2.2)') 'blockgrow',nb
+        !call  writesol_bl_3d(outfil1,Dpm_fine,Xbound_tmp,NN_bl_tmp,NN_tmp)
         !---Block definitions
 
         !Define coarse pm from which values will be interpolated for the final solve
@@ -100,6 +100,15 @@
 
             NZs = 1
             NZf = NNbl(3,nbc)
+
+           !NXs    = NNbl_bl(1,nbc)
+           !NXf    = NNbl_bl(4,nbc)
+
+           !NYs = NNbl_bl(2,nbc)
+           !NYf = NNbl_bl(5,nbc)
+
+           !NZs = NNbl_bl(3,nbc)
+           !NZf = NNbl_bl(6,nbc)
             !---------------------------------------------------------------------------------
             do k=NZs,NZf,nc
                  do i=NXs,NXf,nc
@@ -107,9 +116,9 @@
                           X(1) = Xbound_bl(1,nbc) + (i-1)*Dpm_fine(1)
                           X(2) = Xbound_bl(2,nbc) + (j-1)*Dpm_fine(2)
                           X(3) = Xbound_bl(3,nbc) + (k-1)*Dpm_fine(3)
-                          inode = int(nint((X(1) - Xbound_coarse(1))/ Dpm_coarse(1))) +1
-                          jnode = int(nint((X(2) - Xbound_coarse(2))/ Dpm_coarse(2))) +1
-                          knode = int(nint((X(3) - Xbound_coarse(3))/ Dpm_coarse(3))) +1
+                          inode = int((X(1) - Xbound_coarse(1))/ Dpm_coarse(1)) +1
+                          jnode = int((X(2) - Xbound_coarse(2))/ Dpm_coarse(2)) +1
+                          knode = int((X(3) - Xbound_coarse(3))/ Dpm_coarse(3)) +1
                           if (i.eq.NXs) NN_coarse_map(1,nbc) = inode
                           if (i.eq.NXf) NN_coarse_map(4,nbc) = inode
                           if (j.eq.NYs) NN_coarse_map(2,nbc) = jnode
@@ -201,7 +210,7 @@
         !if (my_rank.eq.1)starttime = MPI_WTIME()
         SOL_pm_coarse=0.d0
         iynbc=1
-        itree=iyntree
+        itree=0!iyntree
         lmax=ilevmax
         if(my_rank.eq.0)starttime = MPI_WTIME()
         if (itree.eq.0) levmax=1
@@ -212,10 +221,10 @@
 
           if(my_rank.eq.0)endtime = MPI_WTIME()
           if(my_rank.eq.0) write(199,*)'pmesh_coarse',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
-       !if (my_rank.eq.0) then
-       !     outfil2='coarse_laplacian'
-       !     call writegrow_3d(RHS_pm_coarse,SOL_pm_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
-       !endif
+      ! if (my_rank.eq.0) then
+      !      outfil2='coarse_laplacian'
+      !      call writegrow_3d(RHS_pm_coarse,SOL_pm_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
+      ! endif
         ! Interpolate to all blocks
         
         ! At this point we calculate boundary conditions for each block and solve it 

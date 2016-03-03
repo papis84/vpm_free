@@ -1,11 +1,11 @@
  Module vpm_vars
-    double precision, allocatable :: XP_scatt(:,:),QP_scatt(:,:)
+    double precision, allocatable :: XP_scatt(:,:),QP_scatt(:,:),UP_scatt(:,:),GP_scatt(:,:)
     double precision              :: DT_c,V_ref, NI
     integer ,allocatable          :: NVR_projscatt(:)
     integer                       :: interf_iproj,ncell_rem,iynhj
 
     integer                       :: ncoarse,nparcell1d
-    integer                       :: neqpm,NVR_p,NVR_size,iwrite,NTIME
+    integer                       :: neqpm,NVR_p,NVR_size,iwrite,NTIME_pm
 
 
     integer,save                       :: IPMWRITE,mrem
@@ -70,7 +70,7 @@ contains
     double precision,intent(inout),pointer :: RHS_pm_in(:,:,:,:)
     double precision,intent(inout),pointer :: velx(:,:,:),vely(:,:,:),velz(:,:,:)
     integer,         intent(inout)         :: NVR_in
-    integer,         intent(in)            :: neqpm_in,WhatToDo,NTIME_in,NVRM_in
+    integer,         intent(in)            :: neqpm_in,WhatToDo,NVRM_in,NTIME_in
     double precision, intent(in)           :: NI_in
     double precision :: a,XPM,YPM,totmass,totvor,MACH,error,pr
     integer          :: i , j, k , nb, NXs,&
@@ -93,7 +93,7 @@ contains
     call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
     II=1;iynhj=0
     NVR_size=NVRM_in
-    NTIME   = NTIME_in
+    NTIME_pm=NTIME_in
     if (II.eq.1) then
         call omp_set_num_threads(1)
        !call mkl_set_num_threads(1)
@@ -126,10 +126,10 @@ contains
 
   nb = my_rank + 1
   
- if (my_rank.eq.0)write(*,*) achar(27)//'[1;31m REALTIME ',NTIME,'WhatToDo = ',WhatTodo,achar(27)//'[0m'
+ if (my_rank.eq.0)write(*,*) achar(27)//'[1;31m REALTIME ',NTIME_pm,'WhatToDo = ',WhatTodo,achar(27)//'[0m'
   if (WhatToDo.eq.0) then 
       ND=3
-      if (NTIME.eq.0) then 
+   !  if (NTIME_pm.eq.0) then 
       open(1,file='pm.inp')
       read(1,*) DXpm,DYpm,DZpm
       read(1,*) interf_iproj
@@ -149,9 +149,9 @@ contains
         enddo
       endif
       close(1)
-      endif
+   !  endif
       call define_sizes
-      if (my_rank.eq.0) then 
+     !if (my_rank.eq.0) then 
           if (allocated(velvrx_pm)) then 
               deallocate(velvrx_pm,velvry_pm,velvrz_pm)
               allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
@@ -164,7 +164,7 @@ contains
          nullify(velx);nullify(vely);nullify(velz)
          velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
          iwrite=0
-      endif
+     !endif
       return
   endif
 
@@ -183,7 +183,7 @@ contains
       RHS_pm=0.d0
   endif
   
-  if(my_rank.eq.0) then
+! if(my_rank.eq.0) then
      if (allocated(SOL_pm)) then 
          deallocate(SOL_pm)
          allocate(SOL_pm(neqpm,NXpm,NYpm,NZpm))
@@ -192,7 +192,7 @@ contains
          allocate(SOL_pm(neqpm,NXpm,NYpm,NZpm))
          SOL_pm=0.d0
      endif
-  endif
+! endif
 
   call project_particles 
  !if (my_rank.eq.0) then 
@@ -232,11 +232,6 @@ if (WhatTodo.lt.4) then
          call calc_velocity_serial_3d(0)
       !  if(mod(NTIME,NWRITE).eq.0) call writesol(NTIME)
 
-      if(IPMWRITE.GT.0) then
-        do i=1,IPMWRITE
-        if(NTIME.ge.IPMWSTART(i).and.NTIME.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
-        enddo
-      endif
          !if (ND.eq.3) then 
          ! call hill_error(NN,NN_bl,Xbound,Dpm,SOL_pm,velvrx_pm,velvry_pm,velvrz_pm)
          ! call writesol(NTIME)
@@ -254,16 +249,20 @@ if (WhatTodo.lt.4) then
   if (WhatToDo.eq.2) then 
      if (my_rank.eq.0)then 
          !call convect_first_order(Xbound,Dpm,NN,NN_bl)
+         st=MPI_WTIME()
          velvrx_pm=0;velvry_pm=0;velvrz_pm=0
          call calc_velocity_serial_3d(1)
-         call calc_antidiffusion
-         if(mod(NTIME,100).eq.0) call writesol
-         itypeb=1!normal back to particles
-         call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
-                                   velvrx_pm,velvry_pm,velvrz_pm,&
-                                   Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
-
-
+         et= MPI_WTIME()
+         write(*,*) 'fd',int((et-st)/60),'m',mod(et-st,60.d0),'s'
+   !     call calc_antidiffusion
+       ! itypeb=1
+       ! call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
+       !                           velvrx_pm,velvry_pm,velvrz_pm,&
+       !                           Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
+         if(mod(NTIME_pm,20).eq.0.or.NTIME_pm.eq.1) call writesol
+    endif
+        call back_to_particles_par
+         
            iwrite=0
      !if(IPMWRITE.GT.0) then
      !  do i=1,IPMWRITE
@@ -279,7 +278,7 @@ if (WhatTodo.lt.4) then
       !  RHS_pm_in=>RHS_pm
          deallocate(SOL_pm)
          deallocate(RHS_pm)
-     endif
+         deallocate(velvrx_pm,velvry_pm,velvrz_pm)
      deallocate(SOL_pm_bl,RHS_pm_bl)
      return
   endif
@@ -294,6 +293,12 @@ endif
          call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
                                    velvrx_pm,velvry_pm,velvrz_pm,&
                                    Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
+
+      if(IPMWRITE.GT.0) then
+        do i=1,IPMWRITE
+        if(NTIME_pm.ge.IPMWSTART(i).and.NTIME_pm.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
+        enddo
+      endif
       !  RHS_pm_in=>RHS_pm
       !  velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
          deallocate(SOL_pm,RHS_pm)
@@ -394,6 +399,36 @@ contains
 
      End Subroutine project_particles 
 
+     Subroutine back_to_particles_par
+       if (my_rank.eq.0) st=MPI_WTIME()
+         call rhsbcast(RHS_pm,NN,neqpm+1)
+         call rhsbcast(SOL_pm,NN,neqpm)
+         call velbcast_3d
+         call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+         NVR_p=NVR/np
+         if (my_rank.eq.0) NVR_p = NVR_p + mod(NVR,np)
+         allocate (XP_scatt(3,NVR_p),QP_scatt(neqpm+1,NVR_p),&
+                   UP_scatt(3,NVR_p),GP_scatt(3,NVR_p))
+      
+         UP_scatt=0.d0;GP_scatt=0.d0
+         call particles_scat
+         if (my_rank.eq.0)then
+             et= MPI_WTIME()
+               write(*,*) 'backcomm',int((et-st)/60),'m',mod(et-st,60.d0),'s'
+         endif
+        if (my_rank.eq.0) st=MPI_WTIME()
+         itypeb=1!normal back to particles
+         call back_to_particles_3D(SOL_pm,RHS_pm,XP_scatt,QP_scatt,UP_scatt,GP_scatt,&
+                                   velvrx_pm,velvry_pm,velvrz_pm,&
+                                   Xbound,Dpm,NN,NN_bl,NVR_p,neqpm,interf_iproj,itypeb,NVR_p)
+          call particles_gath
+         deallocate (XP_scatt,QP_scatt,UP_scatt,GP_scatt)
+         if (my_rank.eq.0)then
+             et= MPI_WTIME()
+               write(*,*) 'back',int((et-st)/60),'m',mod(et-st,60.d0),'s'
+         endif
+
+     End Subroutine back_to_particles_par
 End Subroutine vpm
 
 Subroutine define_sizes
@@ -419,7 +454,7 @@ Subroutine define_sizes
 !-------by nsize i.e with NBI,NBJ,ncoarse,levmax depending on the criterion
 !------that's why ndumcell=0
             if(my_rank.eq.0) then 
-               if (NTIME.eq.0) then 
+               if (NTIME_pm.eq.0) then 
                  XMIN_pm=minval(XP(1,1:NVR)) - interf_iproj*DXpm 
                  YMIN_pm=minval(XP(2,1:NVR)) - interf_iproj*DYpm 
                  ZMIN_pm=minval(XP(3,1:NVR)) - interf_iproj*DZpm 
@@ -427,8 +462,8 @@ Subroutine define_sizes
                  XMAX_pm=maxval(XP(1,1:NVR)) + interf_iproj*DXpm 
                  YMAX_pm=maxval(XP(2,1:NVR)) + interf_iproj*DYpm 
                  ZMAX_pm=maxval(XP(3,1:NVR)) + interf_iproj*DZpm 
-               else
-                 XMAX_pm=maxval(XP(1,1:NVR)) + interf_iproj*DXpm 
+              !else
+              !  XMAX_pm=maxval(XP(1,1:NVR)) + interf_iproj*DXpm 
                endif
             endif
    
@@ -443,13 +478,13 @@ Subroutine define_sizes
             Xbound(4)=XMAX_pm;Xbound(5)=YMAX_pm;Xbound(6)=ZMAX_pm
             Dpm   (1)=DXpm   ;Dpm(2)   =DYpm   ;Dpm(3)   =DZpm
             ndumcell=0
-            nsiz(1) = NBI!*ncoarse
-            nsiz(2) = NBJ!*ncoarse
-            nsiz(3) = NBK!*ncoarse
-            if (ntime.eq.0) then
-              call  definepm(2,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
+            nsiz(1) = NBI * ncoarse
+            nsiz(2) = NBJ * ncoarse
+            nsiz(3) = NBK * ncoarse
+             if (NTIME_pm.eq.0) then
+              call  definepm(3,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
             else
-              call  definepm(4,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
+           !  call  definepm(4,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
             endif               
             XMIN_pm=Xbound(1);YMIN_pm=Xbound(2);ZMIN_pm=Xbound(3)
             XMAX_pm=Xbound(4);YMAX_PM=Xbound(5);ZMAX_pm=Xbound(6)
@@ -471,10 +506,11 @@ Subroutine define_sizes
                 write(*,*) 'New Dpm(1),Dpm(2),Dpm(3)'
                 write(*,*) Dpm(1),Dpm(2),Dpm(3)
                 write(*,*) NN
+                write(*,*) Xbound
              endif
 !define block grid so the are divided by ncoarse and ilevmax
 !so as to have the coarse information at the boundaries exactly.
-            ndumcell_bl= 4
+            ndumcell_bl= ncoarse
             nsiz_bl=ncoarse!ndumcell_coarse!*2*2**ilevmax
               if (.not. allocated(XBound_bl)) then 
                   allocate (Xbound_bl(6,BLOCKS),NNbl(3,BLOCKS),NNbl_bl(6,BLOCKS))
@@ -503,7 +539,7 @@ Subroutine define_sizes
                             !write(*,*) 'Block',nb
                             !write(*,*) Xbound_bl(1,nb),Xbound_bl(4,nb),Xbound_bl(2,nb),Xbound_bl(5,nb)
                             Xbound_tmp(1:6) = Xbound_bl(1:6,nb)
-                            call definepm(3,Xbound_tmp,Dpm ,ND,ndumcell_bl,nsiz_bl,NN_tmp,NN_bl_tmp)
+                            call definepm(1,Xbound_tmp,Dpm ,ND,ndumcell_bl,nsiz_bl,NN_tmp,NN_bl_tmp)
                             Xbound_bl(1:6,nb) = Xbound_tmp(1:6)
                             NNbl(1:3,nb)      = NN_tmp(1:3)
                             NNbl_bl(1:6,nb)   = NN_bl_tmp(1:6)
@@ -520,30 +556,31 @@ Subroutine define_sizes
             nb = my_rank+1
 !define coarse grid must cover block grids
             
-            Xbound(1)=minval(Xbound_bl(1,:))
-            Xbound(2)=minval(Xbound_bl(2,:))
-            Xbound(3)=minval(Xbound_bl(3,:))
-            Xbound(4)=maxval(Xbound_bl(4,:))
-            Xbound(5)=maxval(Xbound_bl(5,:))
-            Xbound(6)=maxval(Xbound_bl(6,:))
+            Xbound(1)=XMIN_pm!minval(Xbound_bl(1,:))
+            Xbound(2)=YMIN_pm!minval(Xbound_bl(2,:))
+            Xbound(3)=ZMIN_pm!minval(Xbound_bl(3,:))
+            Xbound(4)=XMAX_pm!maxval(Xbound_bl(4,:))
+            Xbound(5)=YMAX_pm!maxval(Xbound_bl(5,:))
+            Xbound(6)=ZMAX_pm!maxval(Xbound_bl(6,:))
             Xbound_coarse = Xbound
             Dpm_coarse    = ncoarse*Dpm
             ndumcell_coarse = 4!2**ilevmax
-            nsiz_bl=1
+            nsiz_bl=2**ilevmax
             call definepm(1,Xbound_coarse,Dpm_coarse,ND,ndumcell_coarse,nsiz_bl,NN_coarse,NN_bl_coarse)
              
 !add to dummy cells to the grid globally used for remeshing purposes mainly
            
-            ndumcell=0
-            Xbound(1)=XMIN_pm;Xbound(2)=YMIN_pm;Xbound(3)=ZMIN_pm
-            Xbound(4)=XMAX_pm;Xbound(5)=YMAX_pm;Xbound(6)=ZMAX_pm
-            Dpm   (1)=DXpm   ;Dpm(2)   =DYpm   ;Dpm(3)   =DZpm
-            call  definepm(1,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
-            XMIN_pm=Xbound(1);YMIN_pm=Xbound(2);ZMIN_pm=Xbound(3)
-            XMAX_pm=Xbound(4);YMAX_PM=Xbound(5);ZMAX_pm=Xbound(6)
-            NXpm=NN(1);NYpm=NN(2);NZpm=NN(3)
-            NXs_bl(1)=NN_bl(1);NYs_bl(1)=NN_bl(2);NZs_bl(1)=NN_bl(3)
-            NXf_bl(1)=NN_bl(4);NYf_bl(1)=NN_bl(5);NZf_bl(1)=NN_bl(6)
+           !ndumcell=4
+           !Xbound(1)=XMIN_pm;Xbound(2)=YMIN_pm;Xbound(3)=ZMIN_pm
+           !Xbound(4)=XMAX_pm;Xbound(5)=YMAX_pm;Xbound(6)=ZMAX_pm
+           !Dpm   (1)=DXpm   ;Dpm(2)   =DYpm   ;Dpm(3)   =DZpm
+           !call  definepm(1,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
+           !XMIN_pm=Xbound(1);YMIN_pm=Xbound(2);ZMIN_pm=Xbound(3)
+           !XMAX_pm=Xbound(4);YMAX_PM=Xbound(5);ZMAX_pm=Xbound(6)
+           !NXpm=NN(1);NYpm=NN(2);NZpm=NN(3)
+           !NXs_bl(1)=NN_bl(1);NYs_bl(1)=NN_bl(2);NZs_bl(1)=NN_bl(3)
+           !NXf_bl(1)=NN_bl(4);NYf_bl(1)=NN_bl(5);NZf_bl(1)=NN_bl(6)
+           !print *,'final mesh',NN
             !-----
         
             
@@ -566,7 +603,7 @@ Subroutine writesol
     double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz
     
         if(iwrite.ne.0) return
-        write(filout,'(i5.5,a)') NTIME,'solution.dat'
+        write(filout,'(i5.5,a)') NTIME_pm,'solution.dat'
         open(1,file=filout)
         WRITE(1,'(a190)')'VARIABLES = "X" "Y" "Z" "U" "V" "W" "VORTX" "VORTY" "VORTZ" "Vol" "PSIX" "PSIY" "PSIZ"'
         WRITE(1,*)'ZONE I=',NXf_bl(1)-NXs_bl(1)+1,' J=',NYf_bl(1) - NYs_bl(1) + 1,&
@@ -601,7 +638,7 @@ Subroutine writesol
     call system('rm '//filout)
 
   return
-    write(filout,'(i5.5,a)') NTIME,'flowfield.dat'
+    write(filout,'(i5.5,a)') NTIME_pm,'flowfield.dat'
     open(1,file=filout,form='unformatted')
     write(1) NXs_bl(1),NXf_bl(1)
     write(1) NYs_bl(1),NYf_bl(1)

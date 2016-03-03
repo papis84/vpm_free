@@ -41,27 +41,27 @@ Subroutine calc_velocity_serial_3d(idcalc)
    !$omp enddo
    !$omp endparallel
 
-!if (neqpm.gt.5) then 
-!   !$omp parallel private(i,j,k,dphidx,dphidy,dphidz,dpsidx,dpsidy,dpsidz) num_threads(OMPTHREADS)
-!   !$omp do
-!   do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
-!       do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
-!          do i = NXs_bl(1) + 1, NXf_bl(1) - 1
+ if (neqpm.eq.4) then 
+    !$omp parallel private(i,j,k,dphidx,dphidy,dphidz,dpsidx,dpsidy,dpsidz) num_threads(OMPTHREADS)
+    !$omp do
+    do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
+        do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
+           do i = NXs_bl(1) + 1, NXf_bl(1) - 1
 
-!               !--> dpsi(x,y,z)d(xyz)
-!               dpsidx(1) = (SOL_pm(4,i + 1, j, k)  - SOL_pm(4,i - 1, j, k)) / DXpm2
-!               dpsidy(1) = (SOL_pm(4,i, j + 1, k)  - SOL_pm(4,i, j - 1, k)) / DYpm2
-!               dpsidz(1) = (SOL_pm(4,i, j, k + 1)  - SOL_pm(4,i, j, k - 1)) / DZpm2
-!               ! U = grad x psi
-!               velvrx_pm(i, j, k)  = velvrx_pm(i, j, k) + dpsidx(1)
-!               velvry_pm(i, j, k)  = velvry_pm(i, j, k) + dpsidy(1)
-!               velvrz_pm(i, j, k)  = velvrz_pm(i, j, k) + dpsidz(1)
-!           enddo
-!       enddo
-!   enddo
-!   !$omp enddo
-!   !$omp endparallel
-!endif
+                !--> dpsi(x,y,z)d(xyz)
+                dpsidx(1) = (SOL_pm(4,i + 1, j, k)  - SOL_pm(4,i - 1, j, k)) / DXpm2
+                dpsidy(1) = (SOL_pm(4,i, j + 1, k)  - SOL_pm(4,i, j - 1, k)) / DYpm2
+                dpsidz(1) = (SOL_pm(4,i, j, k + 1)  - SOL_pm(4,i, j, k - 1)) / DZpm2
+                ! U = grad x psi
+                velvrx_pm(i, j, k)  = velvrx_pm(i, j, k) + dpsidx(1)
+                velvry_pm(i, j, k)  = velvry_pm(i, j, k) + dpsidy(1)
+                velvrz_pm(i, j, k)  = velvrz_pm(i, j, k) + dpsidz(1)
+            enddo
+        enddo
+    enddo
+    !$omp enddo
+    !$omp endparallel
+ endif
 endif!
   !Sol of vorticity is no longer need thus we use it for storing deformation
    if (idcalc.eq.0) return
@@ -227,7 +227,7 @@ double precision,allocatable :: laplvort(:,:,:,:)
     DYpm2 =  DYpm**2 
     DZpm2 =  DZpm**2
     Sol_pm=0.d0
-    Ct = 1
+    Ct = 6.8 * DXpm**2 /4
     do k = NZs_bl(1) + 1, NZf_bl(1)- 1 
         do j = NYs_bl(1) + 1, NYf_bl(1 )- 1
            do i = NXs_bl(1) + 1, NXf_bl(1) - 1
@@ -275,7 +275,7 @@ double precision,allocatable :: laplvort(:,:,:,:)
                 dwzdz = (laplvort(1, i, j, k + 1)  - 2 * laplvort(1, i, j, k) &
                        + laplvort(1, i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                Sol_pm(1,i,j,k)=Sol_pm(1,i,j,k) - Ct*dwxdx+dwydy+dwzdz
+                Sol_pm(1,i,j,k)=Sol_pm(1,i,j,k) + Ct*dwxdx+dwydy+dwzdz
 
                 dwxdx = (laplvort(2, i + 1, j, k)  - 2 * laplvort(2, i, j, k) &
                        + laplvort(2, i - 1, j, k)) / DXpm2
@@ -284,7 +284,7 @@ double precision,allocatable :: laplvort(:,:,:,:)
                 dwzdz = (laplvort(2, i, j, k + 1)  - 2 * laplvort(2, i, j, k) &
                        + laplvort(2, i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                Sol_pm(2,i,j,k)=Sol_pm(2,i,j,k) - Ct*dwxdx+dwydy+dwzdz
+                Sol_pm(2,i,j,k)=Sol_pm(2,i,j,k) + Ct*dwxdx+dwydy+dwzdz
 
                 dwxdx = (laplvort(3, i + 1, j, k)  - 2 * laplvort(3, i, j, k) &
                        + laplvort(3, i - 1, j, k)) / DXpm2
@@ -293,7 +293,7 @@ double precision,allocatable :: laplvort(:,:,:,:)
                 dwzdz = (laplvort(3, i, j, k + 1)  - 2 * laplvort(3, i, j, k) &
                        + RHS_pm(3, i, j, k - 1)) / DZpm2
                 ! U = grad x psi
-                Sol_pm(3,i,j,k)=Sol_pm(3,i,j,k) - Ct*dwxdx+dwydy+dwzdz
+                Sol_pm(3,i,j,k)=Sol_pm(3,i,j,k) + Ct*dwxdx+dwydy+dwzdz
             enddo
         enddo
     enddo

@@ -21,7 +21,7 @@ ifeq ($(dbg), 1)
      EXENAME     = $(EXENAMEIN)_debug
      PATHOBJHP   = $(SRCHP)/debug
 else
-     FLAGS       = -mkl -O3 -openmp #-warn all -diag-disable id,7712 
+     FLAGS       = -mkl -O3  #-warn all -diag-disable id,7712 
      EXTRA_FLAGS = #-warn interfaces -warn general
      EXENAME     = $(EXENAMEIN)
      PATHOBJHP   = $(SRCHP)/release

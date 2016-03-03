@@ -73,7 +73,7 @@ contains
         integer, intent(in)                     :: NN_bl(6),NN(3),ND,Nblocks
         double precision,intent(inout),target   :: DSOL_pm(:,:,:,:), DRHS_pm(:,:,:,:),DQP(:,:),DXP(:,:)
         double precision                        :: XPM,YPM ,velx, vely
-        integer                                 :: i , j, k ,NTIME,N11,N12,N13,N14,N15 , nb, NXs, NYs, NXf, NYf, NZs,NZf,neq
+        integer                                 :: i , j, k ,N11,N12,N13,N14,N15 , nb, NXs, NYs, NXf, NYf, NZs,NZf,neq
 
 
         double precision :: xi,yi,ksi1,ksi2,th1,th2,w1,w2
@@ -251,11 +251,7 @@ contains
             Xbound(4) = Xbound(4) + ((ndum_new(1)) * Dpm(1))
             
             NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1 
-            NN(2) = int(nint(abs(Xbound(5) - Xbound(2))/ (Dpm(2)))) + 1 
-            if(ND.eq.3) NN(3) = int(nint(abs(Xbound(6) - Xbound(3))/ (Dpm(3)))) + 1 
             ndum_new(1)  = nsize(1) - mod(NN(1)-1,nsize(1))
-            ndum_new(2)  = nsize(2) - mod(NN(2)-1,nsize(2))
-            ndum_new(3)  = nsize(3) - mod(NN(3)-1,nsize(3))
            !if (mod(ndum_new(1),2).ne.0) then 
            !   write(*,*) 'error sizes',ndum_new,nsize(1),NN(1)
          ! !   stop
@@ -272,8 +268,8 @@ contains
                Xbound(4) = Xbound(4) + ((ndum_new(1)) * Dpm(1))
                ndum_new(1)= ndum_new(1)+ndum
                NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1
-               NN_bl(1) = ndum_new(1) + 1
-               NN_bl(4) = NN(1) - ndum_new(1)
+               NN_bl(1) = ndum + 1
+               NN_bl(4) = NN(1) - ndum
                return
 
             
@@ -353,7 +349,9 @@ contains
                Xbound(1) = Xbound(1) - ((nn1+nn2) * Dpm(1))
                Xbound(4) = Xbound(4) + ((nn2) * Dpm(1))
                NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1
-               NN_bl(1) = ndum_new(1)+ ndum + 1
+              !NN_bl(1) = ndum_new(1)+ ndum + 1
+              !NN_bl(1) = ndum_new(1)+ ndum + 1
+               NN_bl(1) = ndum + 1
                NN_bl(4) = NN(1) - ndum
             endif
             if (mod(ndum_new(2),2).eq.0) then 
@@ -362,8 +360,10 @@ contains
                Xbound(5) = Xbound(5) + ((ndum_new(2)) * Dpm(2))
                ndum_new(2)=ndum_new(2) +ndum !add the initial dummy cells
                NN(2) = int(nint(abs(Xbound(5) - Xbound(2))/ (Dpm(2)))) + 1
-               NN_bl(2) = ndum_new(2) + 1
-               NN_bl(5) = NN(2) - ndum_new(2)
+              !NN_bl(2) = ndum_new(2) + 1
+              !NN_bl(5) = NN(2) - ndum_new(2)
+               NN_bl(2) = ndum+1
+               NN_bl(5) = NN(2) - ndum
             else
             ! write(*,*) 'aaaaa2'
                nn1 = mod(ndum_new(2),2)
@@ -371,7 +371,10 @@ contains
                Xbound(2) = Xbound(2) - ((nn1+nn2) * Dpm(2))
                Xbound(5) = Xbound(5) + ((nn2) * Dpm(2))
                NN(2) = int(nint(abs(Xbound(5) - Xbound(2))/ (Dpm(2)))) + 1
-               NN_bl(2) = ndum_new(2)+ ndum + 1
+              !NN_bl(2) = ndum_new(2)+ ndum + 1
+              !NN_bl(5) = NN(2) - ndum
+
+               NN_bl(2) = ndum + 1
                NN_bl(5) = NN(2) - ndum
             endif
             if(ND.eq.3) then
@@ -381,8 +384,10 @@ contains
                Xbound(6) = Xbound(6) + ((ndum_new(3)) * Dpm(3))
                ndum_new(3)=ndum_new(3) +ndum !add the initial dummy cells
                NN(3) = int(nint(abs(Xbound(6) - Xbound(3))/ (Dpm(3)))) + 1
-               NN_bl(3) = ndum_new(3) + 1
-               NN_bl(6) = NN(3) - ndum_new(3)
+              !NN_bl(3) = ndum_new(3) + 1
+              !NN_bl(6) = NN(3) - ndum_new(3)
+               NN_bl(3) =  ndum+1
+               NN_bl(6) = NN(3) - ndum
             else 
              !write(*,*) 'aaaaa3'
                nn1 = mod(ndum_new(3),2)
@@ -390,7 +395,9 @@ contains
                Xbound(3) = Xbound(3) - ((nn1+nn2) * Dpm(3))
                Xbound(6) = Xbound(6) + ((nn2) * Dpm(3))
                NN(3) = int(nint(abs(Xbound(6) - Xbound(3))/ (Dpm(3)))) + 1
-               NN_bl(3) = ndum_new(3) + ndum + 1
+              !NN_bl(3) = ndum_new(3) + ndum + 1
+              !NN_bl(6) = NN(3) - ndum
+               NN_bl(3) = ndum + 1
                NN_bl(6) = NN(3) - ndum
             endif
             endif

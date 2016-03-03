@@ -61,8 +61,8 @@ Subroutine back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
     DVpm = Dpm(1)*Dpm(2)*Dpm(3)
     if(itype.eq.1) then 
     !Itype==1 normal back to part
-        !$omp parallel private(nv,inode,jnode,knode,ivortx,ivorty,x,y,z,fx,fy,fz,f,i,j,k) num_threads(OMPTHREADS)
-        !$omp do
+       !!$omp parallel private(nv,inode,jnode,knode,ivortx,ivorty,x,y,z,fx,fy,fz,f,i,j,k) num_threads(OMPTHREADS)
+       !!$omp do
         do  nv = 1, NVR
             !-->Find the cell/node  the  particle belongs for X and Y and Z direction.
             inode = int((XP(1,nv) - XBound(1)) / Dpm(1)) + 1
@@ -102,8 +102,8 @@ Subroutine back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
          !  QP(1:3,nv)  = QP(1:3,nv) * DVpm!QP(neqpm+1,nv)
             GP(1:3,nv)  =  Gloc(1:3)*QP(neqpm+1,nv)
         enddo
-        !$omp enddo
-        !$omp endparallel
+       !!$omp enddo
+       !!$omp endparallel
       endif
 
       if (itype.eq.2) then 

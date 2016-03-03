@@ -1594,7 +1594,7 @@ Recursive Subroutine tree_calc_3d_new(nv,nlev,leafstart,branch,X,Y,Z,SOURCE,neqs
              !   write(*,*) X,Y,Z
              !   write(*,*)'--------------------'
              !endif
-      if (r.lt.4*sqrt(DS).and.nlev.gt.0) then 
+      if (r.lt.10*sqrt(DS).and.nlev.gt.0) then 
           call tree_calc_3d_new(nleaf,newlev,leafstart,ibranch,X,Y,Z,SOURCE,neqs,neqf)
       else 
           !Green function  -1/(PI4*R)

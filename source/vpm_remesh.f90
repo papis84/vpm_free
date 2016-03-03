@@ -178,7 +178,7 @@ if (my_rank.eq.0) then
               XP(1,npar) = XC(nc)
               XP(2,npar) = YC(nc)
               XP(3,npar) = ZC(nc)
-              QP(4,npar) =1.d0/float(ncell)*DVpm
+              QP(neqpm+1,npar) =1.d0/float(ncell)*DVpm
            enddo
 
         else
@@ -189,10 +189,8 @@ if (my_rank.eq.0) then
             XP(2,npar)= Y(1)
             XP(3,npar)= Z(1)
                  
-            QP(1,npar)= RHS_pm(1,i,j,k)* DVpm
-            QP(2,npar)= RHS_pm(2,i,j,k)* DVpm
-            QP(3,npar)= RHS_pm(3,i,j,k)* DVpm
-            QP(4,npar)= DVpm
+            QP(1:neqpm,npar)= RHS_pm(1:neqpm,i,j,k)* DVpm
+            QP(neqpm+1,npar)= DVpm
         endif
      enddo
     enddo
