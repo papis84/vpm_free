@@ -340,8 +340,8 @@ contains
                Xbound(4) = Xbound(4) + ((ndum_new(1)) * Dpm(1))
                ndum_new(1)= ndum_new(1)+ndum
                NN(1) = int(nint(abs(Xbound(4) - Xbound(1))/ (Dpm(1)))) + 1
-               NN_bl(1) = ndum_new(1) + 1
-               NN_bl(4) = NN(1) - ndum_new(1)
+               NN_bl(1) = ndum + 1
+               NN_bl(4) = NN(1) - ndum
             else
              !write(*,*) 'aaaaa1'
                nn1 = mod(ndum_new(1),2)

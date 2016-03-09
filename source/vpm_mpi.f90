@@ -221,13 +221,14 @@ Subroutine rhsscat_3d(BLOCKS,NN_tmp,NNbl,NNbl_bl,NN_bl,nb_i,nb_j,nb_k,RHS_pm_bl)
 
     NZs = NNbl_bl(3,nb)
     NZf = NNbl_bl(6,nb)
-    ixs=(nb_i-1)*(NXf-NXs)+NN_bl(1)
-    jxs=(nb_j-1)*(NYf-NYs)+NN_bl(2)
-    kxs=(nb_k-1)*(NZf-NZs)+NN_bl(3)
+    ixs=(nb_i-1)*(NXf-NXs) +NN_bl(1)
+    jxs=(nb_j-1)*(NYf-NYs) +NN_bl(2)
+    kxs=(nb_k-1)*(NZf-NZs) +NN_bl(3)
 
     ixf= ixs + (NXf-NXs+1)-1
     jxf= jxs + (NYf-NYs+1)-1
     kxf= kxs + (NZf-NZs+1)-1
+ 
     RHS_pm_bl(1:neqpm,NXs:NXf,NYs:NYf,NZs:NZf) = RHS_pm(1:neqpm,ixs:ixf,jxs:jxf,kxs:kxf)
     if (nb_i.gt.1) RHS_pm_bl(:,NXs,:,:)=0.d0
     if (nb_j.gt.1) RHS_pm_bl(:,:,NYs,:)=0.d0

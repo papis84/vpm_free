@@ -8,7 +8,7 @@
     integer                       :: neqpm,NVR_p,NVR_size,iwrite,NTIME_pm
 
 
-    integer,save                       :: IPMWRITE,mrem
+    integer,save                       :: IPMWRITE,mrem,idefine
     integer,save                       :: IPMWSTART(10),IPMWSTEPS(10)   
  End Module vpm_vars
  
@@ -141,6 +141,7 @@ contains
       read(1,*) NREMESH, ncell_rem 
       read(1,*) iyntree,ilevmax
       read(1,*) OMPTHREADS
+      read(1,*) idefine
       read(1,*) IPMWRITE
       if(IPMWRITE.gt.10) stop  !maximume value of writes equal to 10
       if(IPMWRITE.GT.0) then
@@ -167,7 +168,8 @@ contains
      !endif
       return
   endif
-
+  call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+  if (NVR.eq.0) return
   NN_tmp(1:3)     = NNbl(1:3,nb)
   NN_bl_tmp(1:6)  = NNbl_bl(1:6,nb)
   allocate(SOL_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)),RHS_pm_bl(neqpm,NN_tmp(1),NN_tmp(2),NN_tmp(3)))
@@ -454,7 +456,7 @@ Subroutine define_sizes
 !-------by nsize i.e with NBI,NBJ,ncoarse,levmax depending on the criterion
 !------that's why ndumcell=0
             if(my_rank.eq.0) then 
-               if (NTIME_pm.eq.0) then 
+               if (NTIME_pm.eq.0.and.idefine.eq.1) then 
                  XMIN_pm=minval(XP(1,1:NVR)) - interf_iproj*DXpm 
                  YMIN_pm=minval(XP(2,1:NVR)) - interf_iproj*DYpm 
                  ZMIN_pm=minval(XP(3,1:NVR)) - interf_iproj*DZpm 
@@ -481,9 +483,9 @@ Subroutine define_sizes
             nsiz(1) = NBI * ncoarse
             nsiz(2) = NBJ * ncoarse
             nsiz(3) = NBK * ncoarse
-             if (NTIME_pm.eq.0) then
+             if (NTIME_pm.eq.0.and.idefine.eq.1) then
               call  definepm(3,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
-            else
+           !else
            !  call  definepm(4,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
             endif               
             XMIN_pm=Xbound(1);YMIN_pm=Xbound(2);ZMIN_pm=Xbound(3)
@@ -567,7 +569,6 @@ Subroutine define_sizes
             ndumcell_coarse = 4!2**ilevmax
             nsiz_bl=2**ilevmax
             call definepm(1,Xbound_coarse,Dpm_coarse,ND,ndumcell_coarse,nsiz_bl,NN_coarse,NN_bl_coarse)
-             
 !add to dummy cells to the grid globally used for remeshing purposes mainly
            
            !ndumcell=4
