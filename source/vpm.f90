@@ -456,7 +456,7 @@ Subroutine define_sizes
 !-------by nsize i.e with NBI,NBJ,ncoarse,levmax depending on the criterion
 !------that's why ndumcell=0
             if(my_rank.eq.0) then 
-               if (NTIME_pm.eq.0.and.idefine.eq.1) then 
+               if ((NTIME_pm.eq.0.and.idefine.eq.1).or.idefine.eq.0) then 
                  XMIN_pm=minval(XP(1,1:NVR)) - interf_iproj*DXpm 
                  YMIN_pm=minval(XP(2,1:NVR)) - interf_iproj*DYpm 
                  ZMIN_pm=minval(XP(3,1:NVR)) - interf_iproj*DZpm 
@@ -483,7 +483,7 @@ Subroutine define_sizes
             nsiz(1) = NBI * ncoarse
             nsiz(2) = NBJ * ncoarse
             nsiz(3) = NBK * ncoarse
-             if (NTIME_pm.eq.0.and.idefine.eq.1) then
+             if ((NTIME_pm.eq.0.and.idefine.eq.1).or.idefine.eq.0) then
               call  definepm(3,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
            !else
            !  call  definepm(4,Xbound,Dpm,ND,ndumcell,nsiz,NN,NN_bl)
