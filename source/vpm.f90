@@ -301,6 +301,7 @@ endif
         if(NTIME_pm.ge.IPMWSTART(i).and.NTIME_pm.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
         enddo
       endif
+        call writesolXavatar
       !  RHS_pm_in=>RHS_pm
       !  velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
          deallocate(SOL_pm,RHS_pm)
@@ -624,8 +625,7 @@ Subroutine writesol
 
                     WRITE(1,'(16(e28.17,1x))')XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
                                              -RHS_pm(2,I,J,K),&
-                                             -RHS_pm(3,I,J,K),RHS_pm(4,I,J,K),SOL_pm(1,I,J,K),SOL_pm(2,I,J,K),&
-                                              SOL_pm(3,I,J,K)
+                                             -RHS_pm(3,I,J,K)!,RHS_pm(4,I,J,K),SOL_pm(1,I,J,K),SOL_pm(2,I,J,K), SOL_pm(3,I,J,K)
 
 
                 enddo
@@ -667,5 +667,67 @@ Subroutine writesol
     close(1)
 
 End Subroutine writesol
+
+Subroutine writesolXavatar
+
+! AVATAR T2.4 specific: rotor + turbulent particles inflow [PM]
+
+    use vpm_vars        
+    use pmeshpar
+    use parvar
+    use pmgrid
+    use MPI
+
+    character*50      :: filout
+    integer           :: i,j,k
+    double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz
+    integer,dimension(15) :: NX_AVA
+    integer               :: NXPOS_AVA_512_128_128, ii
+    
+     NXPOS_AVA_512_128_128=15
+     NX_AVA(1)=2
+     NX_AVA(2)=15
+     NX_AVA(3)=40
+     NX_AVA(4)=65
+     NX_AVA(5)=90
+     NX_AVA(6)=103
+     NX_AVA(7)=128
+     NX_AVA(8)=154
+     NX_AVA(9)=205
+     NX_AVA(10)=256
+     NX_AVA(11)=308
+     NX_AVA(12)=365
+     NX_AVA(13)=417
+     NX_AVA(14)=470
+     NX_AVA(15)=512
+     write(filout,'(i5.5,a)') NTIME_pm,'solX.dat'
+     open(1,file=filout)
+
+     WRITE(1,'(a100)')'VARIABLES = "X" "Y" "Z" "U" "V" "W" "VORTX" "VORTY" "VORTZ"'! "Vol" "PSIX" "PSIY" "PSIZ"'
+     do ii=1,NXPOS_AVA_512_128_128
+        i=NX_AVA(ii) !/2  PM: DX=DY=DZ=8m
+        WRITE(1,'(a11,i3,a8,i4,a7,i4,a7,i4,a11)') 'ZONE T= "',i,'", I=',1,&
+                                             ', J=',NYf_bl(1)-NYs_bl(1)+1, &
+                                             ', K=',NZf_bl(1)-NZs_bl(1)+1,  ', F=POINT'
+        do k=NZs_bl(1),NZf_bl(1)
+        do j=NYs_bl(1),NYf_bl(1)
+             XPM=XMIN_pm+(I-1)*DXpm
+             YPM=YMIN_pm+(J-1)*DYpm
+             ZPM=ZMIN_pm+(K-1)*DZpm
+             velocx = VelvrX_pm(i,j,k)
+             velocy = VelvrY_pm(i,j,k)
+             velocz = VelvrZ_pm(i,j,k)
+             WRITE(1,'(16(e28.17,1x))')XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
+                                      -RHS_pm(2,I,J,K),&
+                                      -RHS_pm(3,I,J,K)!,RHS_pm(4,I,J,K),SOL_pm(1,I,J,K),SOL_pm(2,I,J,K), SOL_pm(3,I,J,K)
+        enddo !j
+        enddo !k
+     enddo !ii
+     close(1)
+    call system('gzip '//filout)
+
+  return
+
+End Subroutine writesolXavatar
 
 End Module vpm_lib
