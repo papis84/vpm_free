@@ -641,7 +641,7 @@ Subroutine writesol
     !   ---FOR PLOTTING PURPOSES ONLY
     call system('~/bin/preplot '//filout//' >/dev/null')
  
-   !call system('rm '//filout)
+    call system('rm '//filout)
 
   return
     write(filout,'(i5.5,a)') NTIME_pm,'flowfield.dat'
