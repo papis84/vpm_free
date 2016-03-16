@@ -291,22 +291,27 @@ endif
 
 
          call calc_velocity_serial_3d(-1)
-         itypeb=1!normal back to particles
-         call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
-                                   velvrx_pm,velvry_pm,velvrz_pm,&
-                                   Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
+    !    itypeb=1!normal back to particles
+    !    call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
+    !                              velvrx_pm,velvry_pm,velvrz_pm,&
+    !                              Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
 
-      if(IPMWRITE.GT.0) then
-        do i=1,IPMWRITE
-        if(NTIME_pm.ge.IPMWSTART(i).and.NTIME_pm.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
-        enddo
-      endif
+        if(IPMWRITE.GT.0) then
+          do i=1,IPMWRITE
+          if(NTIME_pm.ge.IPMWSTART(i).and.NTIME_pm.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
+          enddo
+        endif
         call writesolXavatar
+      endif
+        call back_to_particles_par
+         
+        iwrite=0
       !  RHS_pm_in=>RHS_pm
       !  velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
-         deallocate(SOL_pm,RHS_pm)
-     endif
-     deallocate(SOL_pm_bl,RHS_pm_bl)
+         deallocate(SOL_pm)
+         deallocate(RHS_pm)
+         deallocate(velvrx_pm,velvry_pm,velvrz_pm)
+         deallocate(SOL_pm_bl,RHS_pm_bl)
      return
   endif
   
@@ -604,10 +609,10 @@ Subroutine writesol
     integer           :: i,j,k
     double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz
     
-        if(iwrite.ne.0) return
+      ! if(iwrite.ne.0) return
         write(filout,'(i5.5,a)') NTIME_pm,'solution.dat'
         open(1,file=filout)
-        WRITE(1,'(a190)')'VARIABLES = "X" "Y" "Z" "U" "V" "W" "VORTX" "VORTY" "VORTZ" "Vol" "PSIX" "PSIY" "PSIZ"'
+        WRITE(1,'(a190)')'VARIABLES = "X" "Y" "Z" "U" "V" "W" "VORTX" "VORTY" "VORTZ"'
         WRITE(1,*)'ZONE I=',NXf_bl(1)-NXs_bl(1)+1,' J=',NYf_bl(1) - NYs_bl(1) + 1,&
             ' K=',NZf_bl(1) - NZs_bl(1) +1 ,' F=POINT'
         do k=NZs_bl(1),NZf_bl(1)
@@ -636,7 +641,7 @@ Subroutine writesol
     !   ---FOR PLOTTING PURPOSES ONLY
     call system('~/bin/preplot '//filout//' >/dev/null')
  
-    call system('rm '//filout)
+   !call system('rm '//filout)
 
   return
     write(filout,'(i5.5,a)') NTIME_pm,'flowfield.dat'
@@ -700,6 +705,7 @@ Subroutine writesolXavatar
      NX_AVA(13)=417
      NX_AVA(14)=470
      NX_AVA(15)=512
+     NX_AVA=NX_AVA/2
      write(filout,'(i5.5,a)') NTIME_pm,'solX.dat'
      open(1,file=filout)
 
