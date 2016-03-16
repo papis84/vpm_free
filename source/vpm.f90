@@ -263,6 +263,7 @@ if (WhatTodo.lt.4) then
        !                           Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
          if(mod(NTIME_pm,20).eq.0.or.NTIME_pm.eq.1) call writesol
     endif
+        itypeb=1
         call back_to_particles_par
          
            iwrite=0
@@ -303,6 +304,7 @@ endif
         endif
         call writesolXavatar
       endif
+        itypeb=1
         call back_to_particles_par
          
         iwrite=0
@@ -310,7 +312,6 @@ endif
       !  velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
          deallocate(SOL_pm)
          deallocate(RHS_pm)
-         deallocate(velvrx_pm,velvry_pm,velvrz_pm)
          deallocate(SOL_pm_bl,RHS_pm_bl)
      return
   endif
@@ -320,14 +321,15 @@ endif
  !diffusion stores -NI*grad^2 w * Vol in GP(1,:)
          
          call diffuse_vort_3d
-         itypeb=2!back to particles the diffused vorticity
-         call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
-                                   velvrx_pm,velvry_pm,velvrz_pm,&
-                                   Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
-
-         deallocate(SOL_pm,RHS_pm)
-     endif
-     deallocate(SOL_pm_bl,RHS_pm_bl)
+       ! itypeb=2!back to particles the diffused vorticity
+       ! call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
+       !                           velvrx_pm,velvry_pm,velvrz_pm,&
+       !                           Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
+      endif
+        itypeb=2
+        call back_to_particles_par
+       deallocate(SOL_pm,RHS_pm)
+       deallocate(SOL_pm_bl,RHS_pm_bl)
      return
 
  endif 
@@ -425,7 +427,6 @@ contains
                write(*,*) 'backcomm',int((et-st)/60),'m',mod(et-st,60.d0),'s'
          endif
         if (my_rank.eq.0) st=MPI_WTIME()
-         itypeb=1!normal back to particles
          call back_to_particles_3D(SOL_pm,RHS_pm,XP_scatt,QP_scatt,UP_scatt,GP_scatt,&
                                    velvrx_pm,velvry_pm,velvrz_pm,&
                                    Xbound,Dpm,NN,NN_bl,NVR_p,neqpm,interf_iproj,itypeb,NVR_p)
@@ -705,7 +706,6 @@ Subroutine writesolXavatar
      NX_AVA(13)=417
      NX_AVA(14)=470
      NX_AVA(15)=512
-     NX_AVA=NX_AVA/2
      write(filout,'(i5.5,a)') NTIME_pm,'solX.dat'
      open(1,file=filout)
 
