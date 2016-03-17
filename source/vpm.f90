@@ -8,7 +8,7 @@
     integer                       :: neqpm,NVR_p,NVR_size,iwrite,NTIME_pm
 
 
-    integer,save                       :: IPMWRITE,mrem,idefine
+    integer,save                       :: IPMWRITE,mrem,idefine,iynslice
     integer,save                       :: IPMWSTART(10),IPMWSTEPS(10)   
  End Module vpm_vars
  
@@ -142,6 +142,7 @@ contains
       read(1,*) iyntree,ilevmax
       read(1,*) OMPTHREADS
       read(1,*) idefine
+      read(1,*) iynslice
       read(1,*) IPMWRITE
       if(IPMWRITE.gt.10) stop  !maximume value of writes equal to 10
       if(IPMWRITE.GT.0) then
@@ -229,6 +230,7 @@ if (WhatTodo.lt.4) then
 
   if (WhatToDo.eq.1) then 
      if (my_rank.eq.0)then 
+         velvrx_pm=0.d0;velvry_pm=0.d0;velvrz_pm=0.d0
 
          !call convect_first_order(Xbound,Dpm,NN,NN_bl)
          call calc_velocity_serial_3d(0)
@@ -302,7 +304,7 @@ endif
           if(NTIME_pm.ge.IPMWSTART(i).and.NTIME_pm.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
           enddo
         endif
-        call writesolXavatar
+        if(iynslice.eq.1)call writesolXavatar
       endif
         itypeb=1
         call back_to_particles_par
