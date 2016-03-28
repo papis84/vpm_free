@@ -264,6 +264,9 @@ if (WhatTodo.lt.4) then
        !                           velvrx_pm,velvry_pm,velvrz_pm,&
        !                           Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
          if(mod(NTIME_pm,20).eq.0.or.NTIME_pm.eq.1) call writesol
+         if(mod(NTIME,100).eq.0) call writesol
+         call writeline
+
     endif
         itypeb=1
         call back_to_particles_par
@@ -644,7 +647,7 @@ Subroutine writesol
     !   ---FOR PLOTTING PURPOSES ONLY
     call system('~/bin/preplot '//filout//' >/dev/null')
  
-    call system('rm '//filout)
+  ! call system('rm '//filout)
 
   return
     write(filout,'(i5.5,a)') NTIME_pm,'flowfield.dat'
@@ -737,5 +740,51 @@ Subroutine writesolXavatar
   return
 
 End Subroutine writesolXavatar
+
+Subroutine writeline
+    use vpm_vars        
+    use pmeshpar
+    use parvar
+    use pmgrid
+    use MPI
+
+    
+    character*50        :: filout
+    integer           :: i,j,k,jmat(9),kmat(9),NNJ,NNK,il
+    double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz
+
+
+    NNJ= NYf_bl(1) - NYs_bl(1)+1
+    NNK= NZf_bl(1) - NZs_bl(1)+1
+    jmat(1)=0.5 *NNJ;kmat(1)=0.5 *NNK
+    jmat(2)=0.25*NNJ;kmat(2)=0.25*NNK
+    jmat(3)=0.25*NNJ;kmat(3)=0.75*NNK
+    jmat(4)=0.75*NNJ;kmat(4)=0.25*NNK
+    jmat(5)=0.75*NNJ;kmat(5)=0.75*NNK
+    jmat(6)=0.5*NNJ ;kmat(6)=0.25*NNK
+    jmat(7)=0.5*NNJ;kmat(7)=0.75*NNK
+    jmat(8)=0.25*NNJ;kmat(8)=0.5*NNK
+    jmat(9)=0.75*NNJ;kmat(9)=0.5*NNK
+    do i= 1, 9 
+       j=jmat(i);k=kmat(i)
+       write(filout,'(i2.2,a)') i,'hist.bin'
+       open(1,file=filout,access='APPEND',form='unformatted')
+       if (NTIME.eq.1) then
+          rewind(1)
+          write(1) XMIN_pm,YMIN_pm,ZMIN_pm
+          write(1) DXpm,DYpm,DZpm
+          write(1) NXs_bl(1),NXf_bl(1),j,k
+       endif
+       WRITE(1) NTIME,(velvrx_pm(il,j,k),il=NXs_bl(1),NXf_bl(1)),&
+                        (velvry_pm(il,j,k),il=NXs_bl(1),NXf_bl(1)),&
+                        (velvrz_pm(il,j,k),il=NXs_bl(1),NXf_bl(1))
+                          
+                              
+
+       close(1)
+    enddo
+
+
+End Subroutine writeline
 
 End Module vpm_lib
