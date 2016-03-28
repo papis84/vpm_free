@@ -263,8 +263,8 @@ if (WhatTodo.lt.4) then
        ! call back_to_particles_3D(SOL_pm,RHS_pm,XP,QP,UP,GP,&
        !                           velvrx_pm,velvry_pm,velvrz_pm,&
        !                           Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
-         if(mod(NTIME_pm,20).eq.0.or.NTIME_pm.eq.1) call writesol
-         if(mod(NTIME,100).eq.0) call writesol
+  !      if(mod(NTIME_pm,20).eq.0.or.NTIME_pm.eq.1) call writesol
+         if(mod(NTIME_pm,100).eq.0.or.NTIME_pm.eq.1) call writesol
          call writeline
 
     endif
