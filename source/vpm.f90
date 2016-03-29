@@ -691,26 +691,26 @@ Subroutine writesolXavatar
 
     character*50      :: filout
     integer           :: i,j,k
-    double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz
+    double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz,POSX(15)
     integer,dimension(15) :: NX_AVA
     integer               :: NXPOS_AVA_512_128_128, ii
     
-     NXPOS_AVA_512_128_128=15
+     
+  
+   
+     NXPOS_AVA_512_128_128=10
+     POSX(1)= -350
+     POSX(2)= -250
+     POSX(3)= -150
+     POSX(4)= -50
+     POSX(5)=  50
+     POSX(6)= 150
+     POSX(7)= 250
+     POSX(8)= 350
+     POSX(9)= 450
+
      NX_AVA(1)=2
-     NX_AVA(2)=15
-     NX_AVA(3)=40
-     NX_AVA(4)=65
-     NX_AVA(5)=90
-     NX_AVA(6)=103
-     NX_AVA(7)=128
-     NX_AVA(8)=154
-     NX_AVA(9)=205
-     NX_AVA(10)=256
-     NX_AVA(11)=308
-     NX_AVA(12)=365
-     NX_AVA(13)=417
-     NX_AVA(14)=470
-     NX_AVA(15)=512
+     NX_AVA(2:10)=int(POSX(1:9) - XMIN_pm) / DXpm + 1
      write(filout,'(i5.5,a)') NTIME_pm,'solX.dat'
      open(1,file=filout)
 
