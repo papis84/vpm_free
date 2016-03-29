@@ -58,7 +58,6 @@ endif
      write(*,*) 'remeshing',int((et-st)/60),'m',mod(et-st,60.d0),'s'
  endif
 if (my_rank.eq.0) then 
-    QPR=0
    NVR_all=NVR_ext + NVR_sources
    NVR_sources_init=NVR_sources
    NVR_ext_init =  NVR_ext
