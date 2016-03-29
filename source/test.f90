@@ -34,7 +34,7 @@ if (my_rank.eq.0) then
     QPR(4,:)     = QPR(4,:)*Vref
     QPR(neq+1,:) = Vref
     RMETM=0.001
-   !NVR_sources=0
+    NVR_sources=0
    !open(1,file='sources.bin',form='unformatted')
    !read(1) NVR_sources
    !allocate(XSOUR(3,NVR_sources),QSOUR(neq+1,NVR_sources))
@@ -48,7 +48,7 @@ UINF=0;UINF(1)=10.5
  !-Iwhattodo
  call vpm(XPR,QPR,UPR,GPR,NVR_ext,neq,0,RHS_pm_in,velx,vely,velz,0,NI_in,NVR_ext)
 if (my_rank.eq.0) then
-   call create_sources(UINF)
+ ! call create_sources(UINF)
 endif
  if (my_rank.eq.0) st=MPI_WTIME()
  call remesh_particles_3d(1)
