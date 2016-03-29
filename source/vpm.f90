@@ -769,13 +769,13 @@ Subroutine writeline
        j=jmat(i);k=kmat(i)
        write(filout,'(i2.2,a)') i,'hist.bin'
        open(1,file=filout,access='APPEND',form='unformatted')
-       if (NTIME.eq.1) then
+       if (NTIME_pm.eq.1) then
           rewind(1)
           write(1) XMIN_pm,YMIN_pm,ZMIN_pm
           write(1) DXpm,DYpm,DZpm
           write(1) NXs_bl(1),NXf_bl(1),j,k
        endif
-       WRITE(1) NTIME,(velvrx_pm(il,j,k),il=NXs_bl(1),NXf_bl(1)),&
+       WRITE(1) NTIME_pm,(velvrx_pm(il,j,k),il=NXs_bl(1),NXf_bl(1)),&
                         (velvry_pm(il,j,k),il=NXs_bl(1),NXf_bl(1)),&
                         (velvrz_pm(il,j,k),il=NXs_bl(1),NXf_bl(1))
                           

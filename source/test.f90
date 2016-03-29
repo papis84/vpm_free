@@ -17,6 +17,7 @@ call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
  NI_in=-0.1
  DT_in=0.761905/2.  !=dx/U=8/10.5   !1000
  DT_in=4./10.5     !=dx/U=8/10.5   !1000
+ DT_in=0.036
 
 neq=3
 if (my_rank.eq.0) then 
@@ -37,7 +38,7 @@ if (my_rank.eq.0) then
     NVR_sources=0
    !open(1,file='sources.bin',form='unformatted')
    !read(1) NVR_sources
-   !allocate(XSOUR(3,NVR_sources),QSOUR(neq+1,NVR_sources))
+    allocate(XSOUR(3,NVR_sources),QSOUR(neq+1,NVR_sources))
    !write(*,*) 'NVR_sources=',NVR_sources
    !do i=1,NVR_sources
    !   read(1) XSOUR(1,i),XSOUR(2,i),XSOUR(3,i),QSOUR(1:4,i)
@@ -80,7 +81,7 @@ endif
 !call vpm(XPR,QPR,UPR,GPR,NVR_ext,neq,0,RHS_pm_in,velx,vely,velz,0,NI_in,NVR_ext)
 !call remesh_particles_3d(1)
 T=0
-do i=1,1
+do i=1,6000
 !get velocities and deformations
  T = DT_in 
 
