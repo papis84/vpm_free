@@ -264,7 +264,13 @@ if (WhatTodo.lt.4) then
        !                           velvrx_pm,velvry_pm,velvrz_pm,&
        !                           Xbound,Dpm,NN,NN_bl,NVR,neqpm,interf_iproj,itypeb,NVR_size)
   !      if(mod(NTIME_pm,20).eq.0.or.NTIME_pm.eq.1) call writesol
-         if(mod(NTIME_pm,100).eq.0.or.NTIME_pm.eq.1) call writesol
+        !if(mod(NTIME_pm,100).eq.0.or.NTIME_pm.eq.1) call writesol
+        if(IPMWRITE.GT.0) then
+          do i=1,IPMWRITE
+          if(NTIME_pm.ge.IPMWSTART(i).and.NTIME_pm.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
+          enddo
+        endif
+        if(iynslice.eq.1)call writesolXavatar
          call writeline
 
     endif
