@@ -717,15 +717,16 @@ Subroutine writesolXavatar
 
      NX_AVA(1)=2
      NX_AVA(2:10)=int(POSX(1:9) - XMIN_pm) / DXpm + 1
-     write(filout,'(i5.5,a)') NTIME_pm,'solX.dat'
-     open(1,file=filout)
+     write(filout,'(i5.5,a)') NTIME_pm,'solX.bin'
+     open(1,file=filout,form='unformatted')
 
-     WRITE(1,'(a100)')'VARIABLES = "X" "Y" "Z" "U" "V" "W" "VORTX" "VORTY" "VORTZ"'! "Vol" "PSIX" "PSIY" "PSIZ"'
+!    WRITE(1,'(a100)')'VARIABLES = "X" "Y" "Z" "U" "V" "W" "VORTX" "VORTY" "VORTZ"'! "Vol" "PSIX" "PSIY" "PSIZ"'
      do ii=1,NXPOS_AVA_512_128_128
         i=NX_AVA(ii) !/2  PM: DX=DY=DZ=8m
-        WRITE(1,'(a11,i3,a8,i4,a7,i4,a7,i4,a11)') 'ZONE T= "',i,'", I=',1,&
-                                             ', J=',NYf_bl(1)-NYs_bl(1)+1, &
-                                             ', K=',NZf_bl(1)-NZs_bl(1)+1,  ', F=POINT'
+       !WRITE(1,'(a11,i3,a8,i4,a7,i4,a7,i4,a11)') 'ZONE T= "',i,'", I=',1,&
+       !                                     ', J=',NYf_bl(1)-NYs_bl(1)+1, &
+       !                                     ', K=',NZf_bl(1)-NZs_bl(1)+1,  ', F=POINT'
+        write(1) NYf_bl(1) - NYs_bl(1)+1, NZf_bl(1)-NZs_bl(1)+1
         do k=NZs_bl(1),NZf_bl(1)
         do j=NYs_bl(1),NYf_bl(1)
              XPM=XMIN_pm+(I-1)*DXpm
@@ -734,14 +735,13 @@ Subroutine writesolXavatar
              velocx = VelvrX_pm(i,j,k)
              velocy = VelvrY_pm(i,j,k)
              velocz = VelvrZ_pm(i,j,k)
-             WRITE(1,'(16(e28.17,1x))')XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
+             WRITE(1)XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
                                       -RHS_pm(2,I,J,K),&
                                       -RHS_pm(3,I,J,K)!,RHS_pm(4,I,J,K),SOL_pm(1,I,J,K),SOL_pm(2,I,J,K), SOL_pm(3,I,J,K)
         enddo !j
         enddo !k
      enddo !ii
      close(1)
-    call system('gzip '//filout)
 
   return
 

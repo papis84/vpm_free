@@ -17,7 +17,7 @@ call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
  NI_in=-0.1
  DT_in=0.761905/2.  !=dx/U=8/10.5   !1000
  DT_in=4./10.5     !=dx/U=8/10.5   !1000
- DT_in=0.036
+ DT_in=0.05
 
 neq=3
 if (my_rank.eq.0) then 
@@ -28,7 +28,7 @@ if (my_rank.eq.0) then
     QPR=0;XPR=0
     write(*,*) 'NVR=',NVR_ext,Vref
     do i=1,NVR_ext
-       read(1) XPR(1,i),XPR(2,i),XPR(3,i),QPR(1,i),QPR(2,i),QPR(3,i),QPR(4,i)
+       read(1) XPR(1,i),XPR(2,i),XPR(3,i),QPR(1,i),QPR(2,i),QPR(3,i)
     enddo
 
     QPR(1:3,:)   = -QPR(1:3,:)*Vref 
@@ -45,7 +45,7 @@ if (my_rank.eq.0) then
    !enddo
 endif
 mrem=1
-UINF=0;UINF(1)=10.5
+UINF=0;UINF(1)=7
  !-Iwhattodo
  call vpm(XPR,QPR,UPR,GPR,NVR_ext,neq,0,RHS_pm_in,velx,vely,velz,0,NI_in,NVR_ext)
 if (my_rank.eq.0) then
