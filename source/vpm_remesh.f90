@@ -89,10 +89,8 @@ if(iflag.eq.1) then
        deallocate(XP_scatt,QP_scatt,NVR_projscatt)
 
        if (my_rank.eq.0) then 
-           call omp_set_num_threads(OMPTHREADS)
            RHS_pm(neqpm+1,:,:,:)=DVpm
            call project_vol3d(RHS_pm,neqpm+1,ieq,neqpm+1,IDVPM)
-           call omp_set_num_threads(1)
           !call hill_assign(NN,NN_bl,Xbound,Dpm,RHS_pm,neqpm+1)
 
        endif

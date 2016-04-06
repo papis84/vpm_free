@@ -95,7 +95,6 @@ contains
     NVR_size=NVRM_in
     NTIME_pm=NTIME_in
     if (II.eq.1) then
-        call omp_set_num_threads(1)
        !call mkl_set_num_threads(1)
        !call mkl_domain_set_num_threads(1)
     endif
@@ -387,7 +386,6 @@ contains
             NVR_projscatt=interf_iproj
             call particles_scat
             call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
-            if(my_rank.eq.0) call omp_set_num_threads(1)
                 st=MPI_WTIME()
                 allocate(ieq(neqpm+1),QINF(neqpm+1))
                 QINF=0.d0
@@ -407,11 +405,9 @@ contains
                   !NVR_projscatt=interf_iproj
                   !call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
                   !call project_particles_3D(RHS_pm,QP,XP,NVR_projscatt,NVR,neqpm+1,ieq,neqpm+1,QINF,NVR_size)
-                    call omp_set_num_threads(OMPTHREADS)
                     call project_vol3d(RHS_pm,neqpm+1,ieq,neqpm+1,IDVPM)
                     et=MPI_WTIME()
                     write(*,*) 'Proj',int((et-st)/60),'m',mod(et-st,60.d0),'s'
-                    call omp_set_num_threads(1)
               ! deallocate(ieq,QINF)
               ! deallocate(NVR_projscatt)
                 endif
