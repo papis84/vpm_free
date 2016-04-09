@@ -327,6 +327,17 @@ endif
   endif
   
  if (WhatToDo.eq.5) then 
+          if (allocated(velvrx_pm)) then 
+              deallocate(velvrx_pm,velvry_pm,velvrz_pm)
+              allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
+              velvrx_pm=0.d0;velvry_pm=0.d0;velvrz_pm=0.d0
+          else 
+              allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
+              velvrx_pm=0.d0;velvry_pm=0.d0;velvrz_pm=0.d0
+          endif      
+
+         nullify(velx);nullify(vely);nullify(velz)
+         velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
      if (my_rank.eq.0) then 
  !diffusion stores -NI*grad^2 w * Vol in GP(1,:)
          
@@ -420,7 +431,7 @@ contains
        if (my_rank.eq.0) st=MPI_WTIME()
          call rhsbcast(RHS_pm,NN,neqpm+1)
          call rhsbcast(SOL_pm,NN,neqpm)
-         call velbcast_3d
+       if (itypeb.eq.1)   call velbcast_3d
          call MPI_BCAST(NVR,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
          NVR_p=NVR/np
          if (my_rank.eq.0) NVR_p = NVR_p + mod(NVR,np)
