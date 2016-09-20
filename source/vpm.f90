@@ -269,7 +269,7 @@ if (WhatTodo.lt.4) then
           if(NTIME_pm.ge.IPMWSTART(i).and.NTIME_pm.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
           enddo
         endif
-        if(iynslice.eq.1)call writesolXavatar
+        if(iynslice.ne.0) call writesolXavatar(iynslice)
          call writeline
 
     endif
@@ -312,7 +312,7 @@ endif
           if(NTIME_pm.ge.IPMWSTART(i).and.NTIME_pm.le.(IPMWSTART(i)+IPMWSTEPS(i))) call writesol
           enddo
         endif
-        if(iynslice.eq.1)call writesolXavatar
+        if(iynslice.ne.0) call writesolXavatar(iynslice)
       endif
         itypeb=1
         call back_to_particles_par
@@ -629,10 +629,10 @@ Subroutine writesol
     double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz
     
       ! if(iwrite.ne.0) return
-        write(filout,'(i5.5,a)') NTIME_pm,'solution.dat'
-        open(1,file=filout)
-        WRITE(1,'(a190)')'VARIABLES = "X" "Y" "Z" "U" "V" "W" "VORTX" "VORTY" "VORTZ"'
-        WRITE(1,*)'ZONE I=',NXf_bl(1)-NXs_bl(1)+1,' J=',NYf_bl(1) - NYs_bl(1) + 1,&
+        write(filout,'(i5.5,a)') NTIME_pm,'solution.bin'
+        open(1,file=filout,form='unformatted')
+        WRITE(1)'VARIABLES = "X" "Y" "Z" "U" "V" "W" "VORTX" "VORTY" "VORTZ"'
+        WRITE(1)'ZONE I=',NXf_bl(1)-NXs_bl(1)+1,' J=',NYf_bl(1) - NYs_bl(1) + 1,&
             ' K=',NZf_bl(1) - NZs_bl(1) +1 ,' F=POINT'
         do k=NZs_bl(1),NZf_bl(1)
             do j=NYs_bl(1),NYf_bl(1)
@@ -647,7 +647,7 @@ Subroutine writesol
                     velocy = VelvrY_pm(i,j,k)
                     velocz = VelvrZ_pm(i,j,k)
 
-                    WRITE(1,'(16(e28.17,1x))')XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
+                    WRITE(1)                  XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
                                              -RHS_pm(2,I,J,K),&
                                              -RHS_pm(3,I,J,K)!,RHS_pm(4,I,J,K),SOL_pm(1,I,J,K),SOL_pm(2,I,J,K), SOL_pm(3,I,J,K)
 
@@ -658,41 +658,14 @@ Subroutine writesol
         close(1)
     iwrite=1
     !   ---FOR PLOTTING PURPOSES ONLY
-    call system('~/bin/preplot '//filout//' >/dev/null')
+!   call system('~/bin/preplot '//filout//' >/dev/null')
  
   ! call system('rm '//filout)
 
-  return
-    write(filout,'(i5.5,a)') NTIME_pm,'flowfield.dat'
-    open(1,file=filout,form='unformatted')
-    write(1) NXs_bl(1),NXf_bl(1)
-    write(1) NYs_bl(1),NYf_bl(1)
-    write(1) NZs_bl(1),NZf_bl(1)
-    write(1) DXpm,DYpm,DZpm
-    write(1) XMIN_pm,YMIN_pm,ZMIN_pm
-    do k=NZs_bl(1),NZf_bl(1)
-        do j=NYs_bl(1),NYf_bl(1)
-            do i=NXs_bl(1),NXf_bl(1)
-                XPM=XMIN_pm+(I-1)*DXpm
-                YPM=YMIN_pm+(J-1)*DYpm
-                ZPM=ZMIN_pm+(K-1)*DZpm
-                velocx = VelvrX_pm(i,j,k)
-                velocy = VelvrY_pm(i,j,k)
-                velocz = VelvrZ_pm(i,j,k)
-
-                WRITE(1)       XPM,YPM,ZPM,velocx,velocy,velocz,-RHS_pm(1,I,J,K),&
-                               -RHS_pm(2,I,J,K),&
-                               -RHS_pm(3,I,J,K)
-
-            enddo
-        enddo
-    enddo
-
-    close(1)
 
 End Subroutine writesol
 
-Subroutine writesolXavatar
+Subroutine writesolXavatar(itypesliceavatar)
 
 ! AVATAR T2.4 specific: rotor + turbulent particles inflow [PM]
 
@@ -703,6 +676,7 @@ Subroutine writesolXavatar
     use MPI
 
     character*50      :: filout
+    integer, intent(IN) :: itypesliceavatar
     integer           :: i,j,k
     double precision  :: XPM,YPM,ZPM,velocx,velocy,velocz,POSX(15)
     integer,dimension(15) :: NX_AVA
@@ -710,7 +684,7 @@ Subroutine writesolXavatar
     
      
   
-   
+if (iynsliceavatar.eq.1) then   
      NXPOS_AVA_512_128_128=10
      POSX(1)= -350
      POSX(2)= -250
@@ -724,6 +698,21 @@ Subroutine writesolXavatar
 
      NX_AVA(1)=2
      NX_AVA(2:10)=int(POSX(1:9) - XMIN_pm) / DXpm + 1
+else
+     NXPOS_AVA_512_128_128=10
+     POSX(1)= -204
+     POSX(2)= -102
+     POSX(3)= -50
+     POSX(4)= -4
+     POSX(5)=  4
+     POSX(6)= 50
+     POSX(7)= 102
+     POSX(8)= 204
+     POSX(9)= 306
+
+     NX_AVA(1)=2
+     NX_AVA(2:10)=int(POSX(1:9)-7.1 - XMIN_pm) / DXpm + 1
+endif
      write(filout,'(i5.5,a)') NTIME_pm,'solX.bin'
      open(1,file=filout,form='unformatted')
 
