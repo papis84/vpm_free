@@ -697,7 +697,7 @@ if (iynsliceavatar.eq.1) then
      POSX(9)= 450
 
      NX_AVA(1)=2
-     NX_AVA(2:10)=int(POSX(1:9) - XMIN_pm) / DXpm + 1
+     NX_AVA(2:10)=int((POSX(1:9) - XMIN_pm) / DXpm) + 1
 else
      NXPOS_AVA_512_128_128=10
      POSX(1)= -204
@@ -711,7 +711,7 @@ else
      POSX(9)= 306
 
      NX_AVA(1)=2
-     NX_AVA(2:10)=int(POSX(1:9)-7.1 - XMIN_pm) / DXpm + 1
+     NX_AVA(2:10)=int( (POSX(1:9)-7.1 - XMIN_pm) / DXpm) + 1
 endif
      write(filout,'(i5.5,a)') NTIME_pm,'solX.bin'
      open(1,file=filout,form='unformatted')
