@@ -122,12 +122,12 @@ contains
 
         End Module yapslib
 
-        Subroutine writesol_bl(RHS_pm,SOL_pm,Dpm,outfil,Xbound,NN_bl,NN)
+        Subroutine writesol_bl(RHS_pm,SOL_pm,Dpm,outfil,Xbound,NN_bl,NN,npmsize)
 
             character*25      :: outfil
-            integer           :: i,j,k,NN_bl(6),NN(3)
-            double precision  :: RHS_pm(7,NN(1),NN(2),NN(3))
-            double precision  :: SOL_pm(7,NN(1),NN(2),NN(3))
+            integer           :: i,j,k,NN_bl(6),NN(3),npmsize
+            double precision  :: RHS_pm(npmsize,NN(1),NN(2),NN(3))
+            double precision  :: SOL_pm(npmsize,NN(1),NN(2),NN(3))
             double precision  :: Dpm(3),Xbound(6)
             double precision  :: XPM,YPM,ZPM,velx,vely,velz
 
@@ -162,39 +162,41 @@ contains
 
         End Subroutine writesol_bl
 
-        Subroutine writesol_bl_3d(outfil,Dpm,Xbound,NN_bl,NN)
+        Subroutine writesol_bl_3d(RHS_pm,SOL_pm,Dpm,outfil,Xbound,NN_bl,NN,npmsize)
+
 
             character*25      :: outfil
-            integer           :: i,j,k,NN_bl(6),NN(3)
+            integer           :: i,j,k,NN_bl(6),NN(3),npmsize
+            double precision  :: RHS_pm(npmsize,NN(1),NN(2),NN(3))
+            double precision  :: SOL_pm(npmsize,NN(1),NN(2),NN(3))
             double precision  :: Dpm(3),Xbound(6)
-            double precision  :: XPM,YPM,ZPM
+            double precision  :: XPM,YPM,ZPM,velx,vely,velz
 
             open(1,file=outfil)
-            WRITE(1,'(a250)')'VARIABLES = "X" "Y" "Z"'
-            WRITE(1,*)'ZONE T='//outfil//' I=',NN(1),' J=',NN(2),' K=',NN(3),&
-           ' F=POINT'
+            WRITE(1,'(a)')'VARIABLES = "X" "Y" "Z" "VORTZ""DIL""PSI""PHI"'
+           !WRITE(1,'(a,i,a,i,a,i,a)')'ZONE T='//outfil//' I=',NN_bl(4) - NN_bl(1)+1,' J=',NN_bl(5)-NN_bl(2)+1,&
+           !         ' K=',NN_bl(6)-NN_bl(3)+1,' F=POINT' 
+            WRITE(1,'(a,i,a,i,a,i,a)')'ZONE T='//outfil//' I=',NN(1),' J=',NN(2),&
+                     ' K=',NN(3),' F=POINT' 
+        !   do k=NN_bl(3),NN_bl(6)
+        !      do j=NN_bl(2),NN_bl(5)
+        !          do i=NN_bl(1),NN_bl(4)
             do k=1,NN(3)
                do j=1,NN(2)
                    do i=1,NN(1)
-                       ! WRITE(1,*)'ZONE I=',NXpm,' J=',NYpm,' F=POINT'
-                       ! do j=1,NYpm
-                       !   do i=1,NXpm
+
                        XPM=Xbound(1)+(I-1)*Dpm(1)
                        YPM=Xbound(2)+(J-1)*Dpm(2)
                        ZPM=Xbound(3)+(K-1)*Dpm(3)
-                       !velx = VelphiX_pm(i,j,1) + VelvrX_pm(i,j,1)
-                       !vely = VelphiY_pm(i,j,1) + VelvrY_pm(i,j,1)
-                       !velx = VelphiX_pm(i,j,1) + VelvrX_pm(i,j,1)
-                       !vely = VelphiY_pm(i,j,1) + VelvrY_pm(i,j,1)
                
-                      WRITE(1,'(3(e28.17,1x))')XPM,YPM,ZPM  
+                      WRITE(1,'(10(e28.17,1x))')XPM,YPM,ZPM,-RHS_pm(1,I,J,K),RHS_pm(2,I,J,K),SOL_pm(1,I,J,K),SOL_pm(2,I,J,K)
                    enddo
                enddo
             enddo
             close(1)
             !   ---FOR PLOTTING PURPOSES ONLY
             call system('preplot '//outfil//' >/dev/null')
-            call system('rm '//outfil)
+           !call system('rm '//outfil)
 
 
 
@@ -238,42 +240,3 @@ contains
 
 
       
-        Subroutine writegrow_3d(RHS_pm,SOL_pm,Dpm,outfil,Xbound,NN_bl,NN)
-
-            character*25      :: outfil
-            integer           :: i,j,k,NN_bl(6),NN(3)
-            double precision  :: RHS_pm(3,NN(1),NN(2),NN(3))
-            double precision  :: SOL_pm(3,NN(1),NN(2),NN(3))
-            double precision  :: Dpm(3),Xbound(6)
-            double precision  :: XPM,YPM,ZPM,velx,vely,velz
-
-
-            open(1,file=outfil)
-            WRITE(1,'(a150)')'VARIABLES = "X" "Y" "Z" "VORTZ""DIL""PSI""PHI"'
-            WRITE(1,*)'ZONE T='//outfil//' I=',NN(1),' J=',NN(2),' K=',NN(3),&
-           ' F=POINT'
-            do k=1,NN(3)
-             do j=1,NN(2)
-                do i=1,NN(1)
-                    ! WRITE(1,*)'ZONE I=',NXpm,' J=',NYpm,' F=POINT'
-                    ! do j=1,NYpm
-                    !   do i=1,NXpm
-                    XPM=Xbound(1)+(I-1)*Dpm(1)
-                    YPM=Xbound(2)+(J-1)*Dpm(2)
-                    ZPM=Xbound(3)+(K-1)*Dpm(3)
-                    !velx = VelphiX_pm(i,j,1) + VelvrX_pm(i,j,1)
-                    !vely = VelphiY_pm(i,j,1) + VelvrY_pm(i,j,1)
-
-                    WRITE(1,'(11(e28.17,1x))')XPM,YPM,ZPM,-RHS_pm(1,I,J,K),-RHS_pm(2,I,J,K),SOL_pm(1,I,J,K),SOL_pm(2,I,J,K)
-
-                enddo
-            enddo
-            enddo
-            close(1)
-            !   ---FOR PLOTTING PURPOSES ONLY
-            call system('preplot '//outfil//' >/dev/null')
-            call system('rm '//outfil)
-
-
-
-        End Subroutine writegrow_3d

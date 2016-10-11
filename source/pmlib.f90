@@ -19,8 +19,8 @@ module pmlib
 !Here pointers are defined which will be assigned in the external data to save up space
     double precision,pointer             :: SOL_pm(:,:,:,:), RHS_pm(:,:,:,:),QP(:,:),XP(:,:)
     double precision,allocatable         :: SOL_0_pm(:,:,:,:), source_bound(:,:),x_s(:,:),y_s(:,:),z_s(:,:),d_s(:),cos_s(:),sin_s(:)
-    double precision,allocatable,save    :: source_bound_lev(:,:,:,:),xs_lev(:,:,:),ys_lev(:,:,:),zs_lev(:,:,:),ds_lev(:,:,:)
-    integer,allocatable,save             :: nbound_lev(:),ilev_t(:,:)
+    double precision,allocatable,save    :: source_bound_lev(:,:,:),xs_lev(:,:),ys_lev(:,:),zs_lev(:,:),ds_lev(:,:)
+    integer,allocatable,save             :: nbound_lev(:),ilev_t(:,:,:)
 
     private ::PI,PI2,PI4,XMIN_pm,XMAX_pm,YMIN_pm,YMAX_pm,ZMIN_pm,ZMAX_pm,DXpm,DYpm,DZpm,NVR,NXpm,NYpm,NZPm,ND
     private ::NXs_bl,NYs_bl,NXf_bl,NYf_bl,NZs_bl,NZf_bl,NBlocks,DXpm2,DYpm2,DZpm2

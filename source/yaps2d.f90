@@ -32,7 +32,7 @@
 
 
         !The equations to be solved should be from 1 to neqf
-        neq = neqf
+        neq = npmsize
         nb = my_rank+1
         Xbound_tmp(1:6) = Xbound_bl(1:6,nb)
         NN_tmp(1:3)     = NNbl(1:3,nb)
@@ -132,7 +132,7 @@
             SOL_pm_tmp(:,:,:,:)= SOL_pm_sample(:,:,:,:,nb)
             NN_map(:)=NN_coarse_map(:,nb)
             !calculate the RHS of the poisson problem using the sampled values
-            call calc_laplacian_coarse(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf)
+            call calc_laplacian_coarse(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
             RHS_pm_coarse=0
             RHS_pm_coarse=RHS_pm_coarse + RHS_pm_tmp
             !0 proccesor gathers the rhs using sampled values from all cpu's
@@ -151,7 +151,7 @@
             allocate(RHS_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),1))
             SOL_pm_tmp(:,:,:,:)= SOL_pm_sample(:,:,:,:,nb)
             NN_map(:)=NN_coarse_map(:,nb)
-            call calc_laplacian_coarse(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf)
+            call calc_laplacian_coarse(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
             dest=0
             call mpimat4(mat4,npmsize,NN_coarse(1),NN_coarse(2),1)
             call MPI_SEND(SOL_pm_tmp,1,mat4,dest,1,MPI_COMM_WORLD,ierr)
@@ -191,7 +191,7 @@
         SOL_pm_coarse=0.d0
         iynbc=1
         itree= iyntree
-        lmax=ilevmax
+        lmax=ilevmax-1
         if (itree.eq.0) lmax=1
         if (my_rank.eq.0) write(199,*) 'coarse'
         call pmesh(SOL_pm_coarse,RHS_pm_coarse,QP,XP,Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,&
@@ -272,8 +272,8 @@
 
         if(my_rank.eq.0)endtime = MPI_WTIME()
         if(my_rank.eq.0) write(199,*)'Parallel Poiss=',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
-         !write(outfil1,'(a5,i2.2)') 'block',nb
-         !call writesol_bl(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp)
+        ! write(outfil1,'(a5,i2.2)') 'block',nb
+        ! call +1writesol_bl(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp,npmsize)
 
 
         !allocate(SOL_pm_er(NN_fine(1),NN_fine(2),1,7))
@@ -646,12 +646,12 @@
 
     End Subroutine yaps2d
 
-    Subroutine calc_laplacian_coarse(SOL_pm,RHS_pm,NN,NN_bl,Dpm,NN_map,neqs,neqf)
+    Subroutine calc_laplacian_coarse(SOL_pm,RHS_pm,NN,NN_bl,Dpm,NN_map,neqs,neqf,npmsize)
         Implicit none
 
-        integer,intent(in) :: NN(3),NN_bl(6),NN_map(6),neqs,neqf
-        double precision,intent(out)   :: RHS_pm(neqf,NN(1),NN(2),NN(3))
-        double precision,intent(in)    :: SOL_pm(neqf,NN(1),NN(2),NN(3)),Dpm(3)
+        integer,intent(in) :: NN(3),NN_bl(6),NN_map(6),neqs,neqf,npmsize
+        double precision,intent(out)   :: RHS_pm(npmsize,NN(1),NN(2),NN(3))
+        double precision,intent(in)    :: SOL_pm(npmsize,NN(1),NN(2),NN(3)),Dpm(3)
         integer                        :: i,j
 
 

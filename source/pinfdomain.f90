@@ -49,8 +49,6 @@ Subroutine infdomain(neqs,neqf)
     if(my_rank.eq.0) st = MPI_WTIME()
     if(itree.eq.1) then 
       call build_level_nbound(NXs,NXf,NYs,NYf,neqs,neqf)
-    else if (itree.eq.2) then 
-      call build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
     endif
     if(my_rank.eq.0) then 
         et=MPI_WTIME()
@@ -66,10 +64,6 @@ Subroutine infdomain(neqs,neqf)
     if(my_rank.eq.0) st = MPI_WTIME()
     if (itree.eq.1) then 
        call Bounds2d_lev(ibctyp,NXs,NXf,NYs,NYf,neqs,neqf)
-       deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,nbound_lev)
-       deallocate(source_bound,d_s,x_s,y_s)
-    else if (itree.eq.2) then
-       call Bounds2d_lev_new(ibctyp,NXs,NXf,NYs,NYf,neqs,neqf)
        deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,nbound_lev,ilev_t)
        deallocate(source_bound,d_s,x_s,y_s)
     else 
@@ -95,9 +89,8 @@ Subroutine infdomain_3d(neqs,neqf)
     integer,intent(in) :: neqs,neqf
     integer            :: NXs,NXf,NYs,NYf,NZs,NZf,nn,ndum,neq,nworkb,neq_siz
 
-    integer            :: my_rank,ierr,n,ibctypn,ip,jp,kp
-    double precision   :: et,st,DDX,DDY,DDZ
-    double precision,allocatable :: xs_lev0(:,:,:),ys_lev0(:,:,:),zs_lev0(:,:,:)
+    integer            :: my_rank,ierr
+    double precision   :: et,st
 
     call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
     nworkb = 2 * NXpm *  NYpm + 2 * NXpm * NZpm + 2 * NZPm* Nypm
@@ -113,7 +106,6 @@ Subroutine infdomain_3d(neqs,neqf)
     z_s   = 0.d0
     SOL_0_pm=0.d0
     !sources will reside 2 dummy cells away from the original domain
-    ndum = 2
     ndum = 2**levmax
     nb   = 1
 
@@ -135,8 +127,6 @@ Subroutine infdomain_3d(neqs,neqf)
     if(my_rank.eq.0) st=MPI_WTIME()
     if(itree.eq.1) then
        call build_level_nbound_3d(NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
-    else if(itree.eq.2) then 
-       call build_level_nbound_3d_new(NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
     endif
     if(my_rank.eq.0) then 
         et=MPI_WTIME()
@@ -154,10 +144,6 @@ Subroutine infdomain_3d(neqs,neqf)
     if(my_rank.eq.0) st=MPI_WTIME()
     if (itree.eq.1) then 
        call Bounds3d_lev(ibctyp,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
-       deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,zs_lev,nbound_lev)
-       deallocate(source_bound,d_s,x_s,y_s,z_s)
-    else if (itree.eq.2) then 
-       call Bounds3d_lev_new(ibctyp,NXs,NXf,NYs,NYf,NZs,NZf,neqs,neqf)
        deallocate(source_bound_lev,ds_lev,xs_lev,ys_lev,zs_lev,nbound_lev,ilev_t)
        deallocate(source_bound,d_s,x_s,y_s,z_s)
     else 
@@ -562,679 +548,38 @@ End Subroutine calc_normalderiv_3d
 
 
 !This Subroutine builds the nbounds_lev matrrix using the values calulated at the finer level.
+
 Subroutine build_level_nbound(NXs,NXf,NYs,NYf,neqs,neqf)
     Implicit None
     integer,intent(in):: NXs, NXf, NYs, NYf,neqs,neqf
-    integer          :: icount, istep, lev, nleaf, leafcount, leafmax, leafstart, leaffin, ires, leafacc
+    integer          :: icount, istep, lev, nleaf, leafcount, leafmax, leafstart, leaffin, ires, leafacc,lf
+    integer          :: ncountlev(0:levmax),nj,nn,npre
+    integer,allocatable :: nn_lev(:,:)
     double precision :: x, y, s, source(neqf), xc, yc, sc, sourcec(neqf)
-
-    leafmax=1
-    do lev=1,levmax
-       leafmax= 2**lev + leafmax
-    enddo
-    allocate (source_bound_lev(nbound,neqs:neqf,0:levmax,leafmax)); source_bound_lev     = 0.d0
-    allocate (xs_lev(nbound,0:levmax,leafmax)); xs_lev     = 0.d0
-    allocate (ys_lev(nbound,0:levmax,leafmax)); ys_lev     = 0.d0
-    allocate (ds_lev(nbound,0:levmax,leafmax)); ds_lev     = 0.d0  
-    allocate (nbound_lev(0:levmax))             ; nbound_lev = 0
-     
-    nbound_lev(0)   = nbound
-    xs_lev(:, levmax, 1) = 0.5d0 * (x_s(1,:) + x_s(2,:))
-    ys_lev(:, levmax, 1) = 0.5d0 * (y_s(1,:) + y_s(2,:))
-    ds_lev(:, levmax, 1) = d_s(:)
-    do neq=neqs,neqf
-       source_bound_lev(:,neq,0,1) = source_bound(neq,:)
-    enddo
-
-    
-    icount   = 0
-    leafcount= 0
-    leafacc  = 0
-    istep    = 2**levmax
-    i = Nxs
-    if (mod(NXf-NXs,istep).ne.0.or.mod(NYf-NYs,istep).ne.0) then 
-       write(*,*) 'can divide to tree level'
-       STOP
-    endif
-    do j = NYs,NYf-istep,istep
-        icount = icount + 1
-        !nleaf = 1 is the lev element info
-        leaffin=leafmax
-        do lev = levmax,0,-1
-            leafcount=leafacc + (j-NYs+1)!to start from Nys leafcount + 1
-            leafstart = leaffin - 2**lev + 1
-               do nleaf = leaffin,leafstart,-1
-                  ires = 2 ** (levmax -lev)
-                  xc=0; yc=0; sc=0; sourcec=0
-                  do k = 1,ires
-                     x  = xs_lev(leafcount,levmax,1)
-                     y  = ys_lev(leafcount,levmax,1)
-                     s  = ds_lev(leafcount,levmax,1)
-                     source(neqs:neqf) = source_bound_lev(leafcount,neqs:neqf,levmax,1)
-                     
-                     xc = x + xc;yc= y+ yc; sc= s+ sc;sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                     leafcount=leafcount +1
-                  enddo
-                  xs_lev(icount,0,nleaf) = xc/float(ires)
-                  ys_lev(icount,0,nleaf) = yc/float(ires)
-                  ds_lev(icount,0,nleaf) = sc
-                  source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                  leaffin=leafstart-1
-               enddo
-         enddo
-    enddo
-    leafacc = (NYf-1)-(NYs) + 1 + leafacc !because in fine grid NYs,NYf-1
-    !---XMAX BOUNDARY----
-    i = NXf
-    do j = NYs,NYf-istep,istep
-        icount = icount + 1
-        !nleaf = 1 is the lev element info
-        leaffin=leafmax
-        do lev = levmax,0,-1
-            leafcount=leafacc + (j-NYs+1)!to start from Nys leafcount + 1
-            leafstart = leaffin - 2**lev + 1
-               do nleaf = leaffin,leafstart,-1
-                  ires = 2 ** (levmax -lev)
-                  xc=0; yc=0; sc=0; sourcec=0
-                  do k = 1,ires
-                     x  = xs_lev(leafcount,levmax,1)
-                     y  = ys_lev(leafcount,levmax,1)
-                     s  = ds_lev(leafcount,levmax,1)
-                     source(neqs:neqf) = source_bound_lev(leafcount,neqs:neqf,levmax,1)
-                     
-                     xc = x + xc;yc= y+ yc; sc= s+ sc;sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                     leafcount=leafcount +1
-                  enddo
-                  xs_lev(icount,0,nleaf) = xc/float(ires)
-                  ys_lev(icount,0,nleaf) = yc/float(ires)
-                  ds_lev(icount,0,nleaf) = sc
-                  source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                  leaffin=leafstart-1
-               enddo
-         enddo
-
-    enddo
-    leafacc = (NYf-1)-(NYs) + 1 + leafacc !because in fine grid NYs,NYf-1
-   
-   
-    !---YMIN BOUNDARY----(fn points at the y direction)
-    j = NYs
-    do i = NXs,NXf-istep,istep
-        icount = icount + 1
-        !nleaf = 1 is the lev element info
-        leaffin=leafmax
-        do lev = levmax,0,-1
-            leafcount=leafacc + (i-NXs+1)!to start from Nys leafcount + 1
-            leafstart = leaffin - 2**lev + 1
-               do nleaf = leaffin,leafstart,-1
-                  ires = 2 ** (levmax -lev)
-                  xc=0; yc=0; sc=0; sourcec=0
-                  do k = 1,ires
-                     x  = xs_lev(leafcount,levmax,1)
-                     y  = ys_lev(leafcount,levmax,1)
-                     s  = ds_lev(leafcount,levmax,1)
-                     source(neqs:neqf) = source_bound_lev(leafcount,neqs:neqf,levmax,1)
-                     
-                     xc = x + xc;yc= y+ yc; sc= s+ sc;sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                     leafcount=leafcount +1
-                  enddo
-                  xs_lev(icount,0,nleaf) = xc/float(ires)
-                  ys_lev(icount,0,nleaf) = yc/float(ires)
-                  ds_lev(icount,0,nleaf) = sc
-                  source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                  leaffin=leafstart-1
-               enddo
-         enddo
-    enddo
-   
-    leafacc = (NXf-1)-(NXs) + 1 + leafacc !because in fine grid NYs,NYf-1
-    !---YMAX BOUNDARY----
-    j = NYf
-    do i = NXs,NXf-istep,istep
-        icount = icount + 1
-        !nleaf = 1 is the lev element info
-        leaffin=leafmax
-        do lev = levmax,0,-1
-            leafcount=leafacc + (i-NXs+1)!to start from Nys leafcount + 1
-            leafstart = leaffin - 2**lev + 1
-               do nleaf = leaffin,leafstart,-1
-                  ires = 2 ** (levmax -lev)
-                  xc=0; yc=0; sc=0; sourcec=0
-                  do k = 1,ires
-                     x  = xs_lev(leafcount,levmax,1)
-                     y  = ys_lev(leafcount,levmax,1)
-                     s  = ds_lev(leafcount,levmax,1)
-                     source(neqs:neqf) = source_bound_lev(leafcount,neqs:neqf,levmax,1)
-                     
-                     xc = x + xc;yc= y+ yc; sc= s+ sc;sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                     leafcount=leafcount +1
-                  enddo
-                  xs_lev(icount,0,nleaf) = xc/float(ires)
-                  ys_lev(icount,0,nleaf) = yc/float(ires)
-                  ds_lev(icount,0,nleaf) = sc
-                  source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                  leaffin=leafstart-1
-               enddo
-         enddo
-    enddo
-
-    leafacc = (NXf-1)-(NXs) + 1 + leafacc !because in fine grid NYs,NYf-1
-    if(leafacc.ne.nbound) then 
-       write(*,*) 'leafacc problem'
-       STOP
-    endif
-    nbound_lev(0)=icount
-  ! do i=1,nbound_lev(0)
-  !    lev=0
-  !    istep =2
-  !    leafstart = 0
-  !    do lev = 0,levmax
-  !        open(14,file='lev'//char(48+lev),access='APPEND')
-  !        leafstart = leafstart +2**max(0,(lev-1))
-  !        leaffin   = leafstart +2**(lev) -1
-  !        do j=leafstart,leaffin
-  !           write(14,*) xs_lev(i,0,j),ys_lev(i,0,j)
-  !        enddo
-  !    enddo
-  ! enddo
-End Subroutine build_level_nbound
-
-
-
-!-------------------------------------------------------------------------!
-!-> Subroutine calc_normalderiv                                           !
-!   This Subroutine calculated normal derivate at the boundary of the     !
-!   domain.This together with the appropriate Green function calculate    !
-!   the boundary conditions at the domain boundaries.                     !
-!   For the calculation of the derivative  a fourth order one sided       !
-!   difference approximation is used:                                     !
-!   1/h((25/12)f(i,j)-4(i-1,j) + 3f(i-2,j) - 4/3 f(i-3),j) + 0.25f(i-4,j) !
-!-------------------------------------------------------------------------!
-Subroutine build_level_nbound_3d(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
-    Implicit None
-    integer,intent(in):: NXs, NXf, NYs, NYf, NZs, NZf,neqs,neqf
-    integer          :: icount, istep, lev, nleaf, leafcount, leafmax, leafstart, leaffin, ires, leafacc
-    integer          :: nleaflev, nleafroot
-    integer          :: m, l, il, im, mm, nn, iresroot, NNX, NNY, NNZ, NNX0, NNY0, NNZ0
-    double precision :: x, y, z, s, source(neqf), xc, yc, zc, sc, sourcec(neqf)
     double precision,allocatable :: xs_tmp(:,:),ds_tmp(:),s_tmp(:,:)
-
-
-    leafmax=1
-    do lev=1,levmax
-       leafmax= 4**lev + leafmax
-    enddo
-    istep    = 2**levmax
-    NNX0  = (NXf - istep -NXs)/istep  +1
-    NNY0  = (NYf - istep -NYs)/istep  +1
-    NNZ0  = (NZf - istep -NZs)/istep  +1
-    allocate (nbound_lev(0:levmax))             ; nbound_lev = 0
-    nbound_lev(0) = 2 * NNX0*NNY0 + 2 * NNY0*NNZ0+ 2 * NNX0*NNZ0
-    allocate (source_bound_lev(nbound_lev(0),neqs:neqf,0:levmax,leafmax)); source_bound_lev     = 0.d0
-    allocate (xs_lev(nbound_lev(0),0:1,leafmax)); xs_lev     = 0.d0
-    allocate (ys_lev(nbound_lev(0),0:1,leafmax)); ys_lev     = 0.d0
-    allocate (zs_lev(nbound_lev(0),0:1,leafmax)); ys_lev     = 0.d0
-    allocate (ds_lev(nbound_lev(0),0:1,leafmax)); ds_lev     = 0.d0  
-     
-    allocate (xs_tmp(nbound,3),ds_tmp(nbound),s_tmp(nbound,1:neqf))
-     xs_tmp(1:nbound,1) = 0.25d0 * (x_s(1,:) + x_s(2,:) + x_s(3,:) + x_s(4,:))
-     xs_tmp(1:nbound,2) = 0.25d0 * (y_s(1,:) + y_s(2,:) + y_s(3,:) + y_s(4,:))
-     xs_tmp(1:nbound,3) = 0.25d0 * (z_s(1,:) + z_s(2,:) + z_s(3,:) + z_s(4,:))
-    ds_tmp(1:nbound) = d_s(:)
-    do neq=neqs,neqf
-       s_tmp(1:nbound,neq)  = source_bound(neq,1:nbound)
-    enddo
-
-   
-!tree defined at cells
-    NNZ = NZf  - NZs 
-    NNY = NYf  - NYs 
-    NNX = NXf  - NXs 
-
-    icount   = 0
-    leafcount= 0
-    leafacc  = 0
-    if (mod(NNX,istep).ne.0.or.mod(NNY,istep).ne.0.or.mod(NNZ,istep).ne.0) then 
-       write(*,*) 'can divide to tree level,',NNX,NNY,NNZ
-       STOP
-    endif
-!   !It might seem a  little bit complex but it isnt.
-!   !tree in 2d surfaces means that the tree has 4 leaf's at each level
-!   we start the tree building using the 0-th level  nodes(0th=coarser)
-!   since we know the information at levmax(finer)  we loop the finer grid
-!   using istep. istep is  2 because,2  in 2 in j make the 4 leafs
-!   the stucture is
-!   0-th node -->nleaf
-!   n leaf is the accumulative number of leaf of the 0th node
-!      1
-!     /\
-!    2  3
-!   /\  /\
-!  4 5  6 7
-! 
-!
-! so we know that nleaf 4 of 0th node 4 refers at the second level(it's easy to find out that)
-!
-! the structure is build from levmax to  0th level
-! we find the first leaf  for each  level and and we add up one for each leaf on the level until we finish.
-! because the structure on the finer level is known in a stuctured 2d grid fashion
-! in order to assign the correct nodes to the leads we need to loop through the grid.
-! Also we know that each level has members both in i and j direction 
-! that's we we want to scan using 2d grid patches
-! 
-! ires is the resolution of each level.so finer 
-!      level has resolution of 1(each member has is the finest you can have)
-! 
-! for level  levmax -1 ires = 4 in 3d or ires 2 in 2d
-!  
-! in 3d we split the ires in 2 direction again because of the structured grid fine data we have.
-! we need htat splitting beacuse the data for each level is reconstructed from the original fine data
-! So for level levmax -1 we need to cycle through the 4 elements(in 3d) ,2 in idirection 2 in j direction
-! for level levmax -2 we need to cycle through 16 elements.
-!
-! Why didn't i use the 4 elements of the previous level?I wanted to use the original data.even thought because
-! of the linear interpolation of the data it could be the same using the 4 elements of lev -1
-!
-! source(lev-1) = Sum(source(levmax)*Area(levmax))/Sum(Area(levmax))
-!
-! Because it's surface is a 2d grid with it's own numbering. we use leafacc to know the accumulated number 
-! when changing sides (we map x_s(nod) to a specific leaf)
-!
-!
-!
-! Don't be afraid of  this :leafcount = leafacc + (k- NZs -1 + im  + (m-1) ) * NNY + (j -Nys + il +(l-1))
-! node = (j-1)*NY + k
-! k,j give the global index : think k - NZs -1 as j-1
-!                             think j - NYs    as i
-! The global index cycles at 0th level steps(coarser) so
-!                            im,il give the starting node for each level
-!                            (m-1),(l-1) give the node of the elemmenet for each level(-1 beacuse im,il have one)
-
-    !---XMIN BOUNDARY----(fn points at the x direction)
-    i  = Nxs
-    do k = NZs, NZf - istep,istep
-        do j = NYs,NYf - istep,istep
-            icount = icount + 1
-            !nleaf = 1 is the lev element info
-            leaffin=leafmax
-            do lev = levmax,0,-1
-                leafstart = leaffin - 4**lev + 1 -1
-                nleaflev  = 4**lev !number of leaves per  level
-                nleafroot = sqrt(float(nleaflev))
-                ires = 4 ** (levmax -lev)
-                !resolution of level(i.e. finer level has a ires=1 next level ires=4
-                !ires is always a perfect square.i need iresroot because i have to distinguish i from j
-                iresroot = sqrt(float(ires))
-                im=0;
-                nleaf = leafstart
-                do mm = 1,nleafroot!jdirection
-                  im= (mm-1)*2**(levmax - lev) +1 !jdirection starting node
-                  il=0;
-                  do nn = 1, nleafroot ! i direction
-                     il= (nn-1)*2**(levmax - lev)  +1!idireciton starting node
-                     xc=0; yc=0; zc=0;sc=0; sourcec=0
-                     nleaf = nleaf + 1
-                     do m = 1,iresroot
-                        do l = 1,iresroot
-                            !we use l-1 and m-1 because the 1 is already asigned at il,im
-                            !sources at points
-                            !leafcount = leafacc + (k - NZs +im + (m-1)) * NNY + (j - NYs+1 + il +(l-1))
-                            !sources at cells
-                            leafcount = leafacc + (k - NZs -1 +im + (m-1)) * NNY + (j - NYs + il +(l-1))
-                            x  = xs_tmp(leafcount,1)
-                            y  = xs_tmp(leafcount,2)
-                            z  = xs_tmp(leafcount,3)
-                            s  = ds_tmp(leafcount)
-                            source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                            
-                            
-                            xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                            sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                         enddo
-                        enddo
-                      xs_lev(icount,0,nleaf) = xc/float(ires)
-                      ys_lev(icount,0,nleaf) = yc/float(ires)
-                      zs_lev(icount,0,nleaf) = zc/float(ires)
-                      ds_lev(icount,0,nleaf) = sc
-                      source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                      leaffin=leafstart
-                    enddo
-                 enddo
-             enddo
-        enddo
-    enddo
-!do i=1,icount
-!      lev=0
-!      leafstart = 0
-
-!      do lev = 0,levmax
-!          open(14,file='lev'//char(48+lev),access='APPEND')
-!          leafstart = leafstart +4**max(0,(lev-1))
-!          leaffin   = leafstart +4**(lev) -1
-!          if (lev.eq.0) leaffin=1
-!          do j=leafstart,leaffin
-!             write(14,'(3(e28.17,1x))') xs_lev(i,0,j),ys_lev(i,0,j),zs_lev(i,0,j)
-!          enddo
-!         close(14)
-!      enddo
-!   enddo
-!   do i=1,nbound
-!      write(1511,*) xs_tmp(i,1),xs_tmp(i,2),xs_tmp(i,3)
-!   enddo
-
-    leafacc = leafacc + NNZ * NNY
-    !---XMAX BOUNDARY----
-    i = NXf
-    do k = NZs, NZf - istep, istep
-        do j = NYs,NYf - istep, istep
-            icount = icount + 1
-            !nleaf = 1 is the lev element info
-            leaffin=leafmax
-            do lev = levmax,0,-1
-                leafstart = leaffin - 4**lev + 1 -1
-                nleaflev  = 4**lev !number of leaves per  level
-                nleafroot = sqrt(float(nleaflev))
-                ires = 4 ** (levmax -lev)
-                !resolution of level(i.e. finer level has a ires=1 next level ires=4
-                !ires is always a perfect square.i need iresroot because i have to distinguish i from j
-                iresroot = sqrt(float(ires))
-                im=0;
-                nleaf = leafstart
-                do mm = 1,nleafroot!jdirection
-                  im= (mm-1)*2**(levmax - lev) +1 !jdirection starting node
-                  il=0;
-                  do nn = 1, nleafroot ! i direction
-                     il= (nn-1)*2**(levmax - lev)  +1!idireciton starting node
-                     xc=0; yc=0; zc=0;sc=0; sourcec=0
-                     nleaf = nleaf + 1
-                     do m = 1,iresroot
-                        do l = 1,iresroot
-                            !we use l-1 and m-1 because the 1 is already asigned at il,im
-                            !sources at points
-                           !leafcount = leafacc + (k - NZs  +im + (m-1)) * NNY + (j - NYs + 1 + il +(l-1))
-                            !sources at cells
-                            leafcount = leafacc + (k - NZs -1 +im + (m-1)) * NNY + (j - NYs + il +(l-1))
-                            x  = xs_tmp(leafcount,1)
-                            y  = xs_tmp(leafcount,2)
-                            z  = xs_tmp(leafcount,3)
-                            s  = ds_tmp(leafcount)
-                            source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                            
-                            
-                            xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                            sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                         enddo
-                        enddo
-                      xs_lev(icount,0,nleaf) = xc/float(ires)
-                      ys_lev(icount,0,nleaf) = yc/float(ires)
-                      zs_lev(icount,0,nleaf) = zc/float(ires)
-                      ds_lev(icount,0,nleaf) = sc
-                      source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                      leaffin=leafstart
-                    enddo
-                 enddo
-             enddo
-
-        enddo
-    enddo
-
-    leafacc = leafacc + NNZ * NNY
-    !---YMIN BOUNDARY----(fn points at the y direction)
-    j = NYs
-    do k = NZs,NZf - istep , istep
-        do i = NXs,NXf - istep, istep
-            icount = icount + 1
-            !nleaf = 1 is the lev element info
-            leaffin=leafmax
-            do lev = levmax,0,-1
-                leafstart = leaffin - 4**lev + 1 -1
-                nleaflev  = 4**lev !number of leaves per  level
-                nleafroot = sqrt(float(nleaflev))
-                ires = 4 ** (levmax -lev)
-                !resolution of level(i.e. finer level has a ires=1 next level ires=4
-                !ires is always a perfect square.i need iresroot because i have to distinguish i from j
-                iresroot = sqrt(float(ires))
-                im=0;
-                nleaf = leafstart
-                do mm = 1,nleafroot!jdirection
-                  im= (mm-1)*2**(levmax - lev) +1 !jdirection starting node
-                  il=0;
-                  do nn = 1, nleafroot ! i direction
-                     il= (nn-1)*2**(levmax - lev)  +1!idireciton starting node
-                     xc=0; yc=0; zc=0;sc=0; sourcec=0
-                     nleaf = nleaf + 1
-                     do m = 1,iresroot
-                        do l = 1,iresroot
-                            !we use l-1 and m-1 because the 1 is already asigned at il,im
-                            !sources at points
-                            !leafcount = leafacc + (k - NZs  +im + (m-1)) * NNY + (i - NXs +1+ il +(l-1))
-                            !sources at cells
-                            leafcount = leafacc + (k - NZs -1 +im + (m-1)) * NNX + (i - NXs + il +(l-1))
-                            x  = xs_tmp(leafcount,1)
-                            y  = xs_tmp(leafcount,2)
-                            z  = xs_tmp(leafcount,3)
-                            s  = ds_tmp(leafcount)
-                            source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                            
-                            
-                            xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                            sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                         enddo
-                        enddo
-                      xs_lev(icount,0,nleaf) = xc/float(ires)
-                      ys_lev(icount,0,nleaf) = yc/float(ires)
-                      zs_lev(icount,0,nleaf) = zc/float(ires)
-                      ds_lev(icount,0,nleaf) = sc
-                      source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                      leaffin=leafstart
-                    enddo
-                 enddo
-             enddo
-        enddo
-    enddo
-
-
-    leafacc = leafacc + NNZ * NNX
-    !---YMAX BOUNDARY----
-    j = NYf
-    do k = NZs,NZf - istep, istep
-        do i = NXs,NXf - istep, istep
-           icount = icount + 1
-           !nleaf = 1 is the lev element info
-           leaffin=leafmax
-           do lev = levmax,0,-1
-               leafstart = leaffin - 4**lev + 1 -1
-               nleaflev  = 4**lev !number of leaves per  level
-               nleafroot = sqrt(float(nleaflev))
-               ires = 4 ** (levmax -lev)
-               !resolution of level(i.e. finer level has a ires=1 next level ires=4
-               !ires is always a perfect square.i need iresroot because i have to distinguish i from j
-               iresroot = sqrt(float(ires))
-               im=0;
-               nleaf = leafstart
-               do mm = 1,nleafroot!jdirection
-                 im= (mm-1)*2**(levmax - lev) +1 !jdirection starting node
-                 il=0;
-                 do nn = 1, nleafroot ! i direction
-                    il= (nn-1)*2**(levmax - lev)  +1!idireciton starting node
-                    xc=0; yc=0; zc=0;sc=0; sourcec=0
-                    nleaf = nleaf + 1
-                    do m = 1,iresroot
-                       do l = 1,iresroot
-                           !we use l-1 and m-1 because the 1 is already asigned at il,im
-                           !sources at points
-                           !leafcount = leafacc + (k - NZs  +im + (m-1)) * NNY + (i - NXs +1+ il +(l-1))
-                           !sources at cells
-                           leafcount = leafacc + (k - NZs -1 +im + (m-1)) * NNX + (i - NXs + il +(l-1))
-                           x  = xs_tmp(leafcount,1)
-                           y  = xs_tmp(leafcount,2)
-                           z  = xs_tmp(leafcount,3)
-                           s  = ds_tmp(leafcount)
-                           source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                           
-                           
-                           xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                           sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                        enddo
-                       enddo
-                     xs_lev(icount,0,nleaf) = xc/float(ires)
-                     ys_lev(icount,0,nleaf) = yc/float(ires)
-                     zs_lev(icount,0,nleaf) = zc/float(ires)
-                     ds_lev(icount,0,nleaf) = sc
-                     source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                     leaffin=leafstart
-                   enddo
-                enddo
-            enddo
-        enddo
-    enddo
-
-    leafacc = leafacc + NNZ * NNX
-    
-    !---ZMIN BOUNDARY----
-    k = NZs
-    do j = NYs,NYf - istep, istep
-        do i = NXs,NXf - istep, istep
-           icount = icount + 1
-           !nleaf = 1 is the lev element info
-           leaffin=leafmax
-           do lev = levmax,0,-1
-               leafstart = leaffin - 4**lev + 1 -1
-               nleaflev  = 4**lev !number of leaves per  level
-               nleafroot = sqrt(float(nleaflev))
-               ires = 4 ** (levmax -lev)
-               !resolution of level(i.e. finer level has a ires=1 next level ires=4
-               !ires is always a perfect square.i need iresroot because i have to distinguish i from j
-               iresroot = sqrt(float(ires))
-               im=0;
-               nleaf = leafstart
-               do mm = 1,nleafroot!jdirection
-                 im= (mm-1)*2**(levmax - lev) +1 !jdirection starting node
-                 il=0;
-                 do nn = 1, nleafroot ! i direction
-                    il= (nn-1)*2**(levmax - lev)  +1!idireciton starting node
-                    xc=0; yc=0; zc=0;sc=0; sourcec=0
-                    nleaf = nleaf + 1
-                    do m = 1,iresroot
-                       do l = 1,iresroot
-                           !we use l-1 and m-1 because the 1 is already asigned at il,im
-                           !sources at points
-                           !leafcount = leafacc + (j - NYs +im + (m-1)) * NNX + (i - NXs +1+ il +(l-1))
-                           !sources at cells
-                           leafcount = leafacc + (j - NYs -1 +im + (m-1)) * NNX + (i - NXs + il +(l-1))
-                           x  = xs_tmp(leafcount,1)
-                           y  = xs_tmp(leafcount,2)
-                           z  = xs_tmp(leafcount,3)
-                           s  = ds_tmp(leafcount)
-                           source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                           
-                           
-                           xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                           sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                        enddo
-                       enddo
-                     xs_lev(icount,0,nleaf) = xc/float(ires)
-                     ys_lev(icount,0,nleaf) = yc/float(ires)
-                     zs_lev(icount,0,nleaf) = zc/float(ires)
-                     ds_lev(icount,0,nleaf) = sc
-                     source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                     leaffin=leafstart
-                   enddo
-                enddo
-            enddo
-        enddo
-    enddo
-    leafacc = leafacc + NNY * NNX
-    !---ZMAX BOUNDARY
-    k = NZf
-    do j = NYs,NYf - istep, istep
-        do i = NXs,NXf - istep, istep
-           icount = icount + 1
-           !nleaf = 1 is the lev element info
-           leaffin=leafmax
-           do lev = levmax,0,-1
-               leafstart = leaffin - 4**lev + 1 -1
-               nleaflev  = 4**lev !number of leaves per  level
-               nleafroot = sqrt(float(nleaflev))
-               ires = 4 ** (levmax -lev)
-               !resolution of level(i.e. finer level has a ires=1 next level ires=4
-               !ires is always a perfect square.i need iresroot because i have to distinguish i from j
-               iresroot = sqrt(float(ires))
-               im=0;
-               nleaf = leafstart
-               do mm = 1,nleafroot!jdirection
-                 im= (mm-1)*2**(levmax - lev) +1 !jdirection starting node
-                 il=0;
-                 do nn = 1, nleafroot ! i direction
-                    il= (nn-1)*2**(levmax - lev)  +1!idireciton starting node
-                    xc=0; yc=0; zc=0;sc=0; sourcec=0
-                    nleaf = nleaf + 1
-                    do m = 1,iresroot
-                       do l = 1,iresroot
-                           !we use l-1 and m-1 because the 1 is already asigned at il,im
-                           !sources at points
-                           !leafcount = leafacc + (j - NYs +im + (m-1)) * NNX + (i - NXs +1+ il +(l-1))
-                           !sources at cells
-                           leafcount = leafacc + (j - NYs -1 +im + (m-1)) * NNX + (i - NXs + il +(l-1))
-                           x  = xs_tmp(leafcount,1)
-                           y  = xs_tmp(leafcount,2)
-                           z  = xs_tmp(leafcount,3)
-                           s  = ds_tmp(leafcount)
-                           source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                           
-                           
-                           xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                           sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
-                        enddo
-                       enddo
-                     xs_lev(icount,0,nleaf) = xc/float(ires)
-                     ys_lev(icount,0,nleaf) = yc/float(ires)
-                     zs_lev(icount,0,nleaf) = zc/float(ires)
-                     ds_lev(icount,0,nleaf) = sc
-                     source_bound_lev(icount,neqs:neqf,0,nleaf) = sourcec(neqs:neqf)/sc
-                     leaffin=leafstart
-                   enddo
-                enddo
-            enddo
-
-        enddo
-    enddo
-    
-    leafacc = leafacc + NNY * NNX
-    if (nbound_lev(0).ne.icount) then 
-        write(*,*) 'nbound_lev problem',nbound_lev(0),icount
-        stop
-    endif
-     deallocate(xs_tmp,ds_tmp,s_tmp)
-End Subroutine build_level_nbound_3d
-
-
-Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
-    Implicit None
-    integer,intent(in):: NXs, NXf, NYs, NYf,neqs,neqf
-    integer          :: icount, istep, lev, nleaf, leafcount, leafmax, leafstart, leaffin, ires, leafacc
-    integer          :: ncountlev(0:levmax)
-    double precision :: x, y, s, source(neqf), xc, yc, sc, sourcec(neqf)
     character *16    :: filout
 
     leafmax=1
     leafmax=2
-    allocate (source_bound_lev(nbound,neqs:neqf,0:levmax,leafmax)); source_bound_lev     = 0.d0
-    allocate (xs_lev(nbound,0:levmax,leafmax)); xs_lev     = 0.d0
-    allocate (ys_lev(nbound,0:levmax,leafmax)); ys_lev     = 0.d0
-    allocate (ds_lev(nbound,0:levmax,leafmax)); ds_lev     = 0.d0  
-    allocate (ilev_t(nbound,0:levmax))         ; ilev_t = 0
+    allocate (source_bound_lev(nbound,neqs:neqf,0:levmax)); source_bound_lev     = 0.d0
+    allocate (xs_lev(nbound,0:levmax)); xs_lev     = 0.d0
+    allocate (ys_lev(nbound,0:levmax)); ys_lev     = 0.d0
+    allocate (ds_lev(nbound,0:levmax)); ds_lev     = 0.d0  
+    allocate (ilev_t(nbound,0:levmax,6))         ; ilev_t = 0
     allocate (nbound_lev(0:levmax))             ; nbound_lev = 0
+    allocate (nn_lev(3,0:levmax)); nn_lev=0.d0
+    allocate (xs_tmp(nbound,3),ds_tmp(nbound),s_tmp(nbound,1:neqf))
+
+    xs_tmp(1:nbound,1) = 0.5d0 * (x_s(1,:) + x_s(2,:))
+    xs_tmp(1:nbound,2) = 0.5d0 * (y_s(1,:) + y_s(2,:))
+    ds_tmp(1:nbound)   = d_s(:)
+    do neq=neqs,neqf
+       s_tmp(1:nbound,neq)  = source_bound(neq,1:nbound)
+    enddo
      
     nbound_lev(0)   = nbound
-    xs_lev(:, levmax, 1) = 0.5d0 * (x_s(1,:) + x_s(2,:))
-    ys_lev(:, levmax, 1) = 0.5d0 * (y_s(1,:) + y_s(2,:))
-    ds_lev(:, levmax, 1) = d_s(:)
-    do neq=neqs,neqf
-       source_bound_lev(:,neq,levmax,1) = source_bound(neq,:)
-    enddo
 
-    
+    ilev_t=0
     icount   = 0
     leafcount= 0
     leafacc  = 0
@@ -1242,35 +587,85 @@ Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
     nbound_lev=0;ncountlev=0
     i = Nxs
 
+!FINER LEVEL 0 -COARSER LEVEL levmax
+
+!The tree level is built.It supports levels that are not exactly divided.In this case a dummy cell is added 
+!in the coarser level and when you encounter that in the tree routine you automatically go to the next level.
+!The tree is defined at cells not at nodes.
+!the basic structure is the ilev_t matrix 
+!ilev_t(1:2_ are the corresponding finer level cells for each coarse cell
+!ilev_t(5) are how many cells are there(normally 2,dummy 1)
+!dummy can have more than 1 cell because each coarser level is define as groups of two
+!ilev_t(6) >0 if normal cell,-1 if dummy cell in i direction,-2 in dummy cell in j direction
+!store  how many cells in each level in each direction for later use in building the tree
+
+    do lev=0,levmax
+       istep    = 2**lev
+       nn_lev(1,lev) = int( (NXf-NXs) / istep)
+       nn_lev(2,lev) = int( (NYf-NYs) / istep)
+!if not divided exactly dummy cell
+       if (mod(NXf-NXs, istep).ne.0) nn_lev(1,lev) = nn_lev(1,lev) +1
+       if (mod(NYf-NYs, istep).ne.0) nn_lev(2,lev) = nn_lev(2,lev) +1
+    enddo
+
+
+!----------Start for each plane
+
     do lev=0,levmax
        istep    = 2**lev
        icount=nbound_lev(lev)
        leafcount=nbound_lev(0)
        do j=NYs,NYf-istep,istep
-          !for all leaves in 
+!the levels are build based on the finer level
           xc=0; yc=0;sc=0; sourcec=0
           do k=1,istep
              leafcount=leafcount+1
-             x  = xs_lev(leafcount,levmax,1)
-             y  = ys_lev(leafcount,levmax,1)
-             s  = ds_lev(leafcount,levmax,1)
-             source(neqs:neqf) = source_bound_lev(leafcount,neqs:neqf,levmax,1)
+             x  = xs_tmp(leafcount,1)
+             y  = xs_tmp(leafcount,2)
+             s  = ds_tmp(leafcount)
+             source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
              xc = x + xc;yc= y+ yc; sc= s+ sc;sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
           enddo
           icount = icount+1
-          xs_lev(icount,lev,2) = xc/float(istep)
-          ys_lev(icount,lev,2) = yc/float(istep)
-          ds_lev(icount,lev,2) = sc
-          source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-          ilev_t(icount,lev)=1
+          xs_lev(icount,lev) = xc/float(istep)
+          ys_lev(icount,lev) = yc/float(istep)
+          ds_lev(icount,lev) = sc
+          source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+          npre = nn_lev(2,lev)
+!for levels greater than 0 find the child cells
+          if(lev.gt.0) then 
+             nn = nn_lev(2,lev-1)
+             if (j.eq.NYs.and.icount-1.eq.nbound_lev(lev)) then 
+                 nj = nbound_lev(lev-1)+1
+!for the first cell of the plane 
+             else if (j.eq.NYs.and.icount-1.gt.nbound_lev(lev)) then 
+!for the first cell of the line 
+                 nj = ilev_t(icount-1,lev, 2) + 1
+!if the previous cell is dummy 
+                 if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 1) + 1
+             else
+                 nj = ilev_t(icount-1,lev, 2) + 1 
+             endif
+
+
+             ilev_t(icount,lev,1) = nj
+             ilev_t(icount,lev,2) = nj+1
+             ilev_t(icount,lev,5) = 2
+          endif
+          ilev_t(icount,lev,6) = npre
        enddo
        if (mod(NYf-Nys,istep).ne.0.or.NYf-NYs.le.istep) then 
           if (lev.eq.0) then
              write(*,*) 'something is very wrong with levels.lev0 should not be in here'
              STOP
           endif
+!for dummy cells in the ith direction
           icount = icount +1 
-          ilev_t(icount,lev)=-1
+          nn = nn_lev(2,lev-1)
+          nj = ilev_t(icount-1,lev,2) +1 
+          ilev_t(icount,lev,1) = nj
+          ilev_t(icount,lev,5) = 1
+          ilev_t(icount,lev,6) = -1
        endif
        ncountlev(lev)=icount
     enddo
@@ -1289,18 +684,36 @@ Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
           xc=0; yc=0; sc=0; sourcec=0
           do k=1,istep
              leafcount=leafcount+1
-             x  = xs_lev(leafcount,levmax,1)
-             y  = ys_lev(leafcount,levmax,1)
-             s  = ds_lev(leafcount,levmax,1)
-             source(neqs:neqf) = source_bound_lev(leafcount,neqs:neqf,levmax,1)
+             x  = xs_tmp(leafcount,1)
+             y  = xs_tmp(leafcount,2)
+             s  = ds_tmp(leafcount)
+             source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
              xc = x + xc;yc= y+ yc; sc= s+ sc;sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
           enddo
           icount = icount+1
-          xs_lev(icount,lev,2) = xc/float(istep)
-          ys_lev(icount,lev,2) = yc/float(istep)
-          ds_lev(icount,lev,2) = sc
-          source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-          ilev_t(icount,lev)=1
+          xs_lev(icount,lev) = xc/float(istep)
+          ys_lev(icount,lev) = yc/float(istep)
+          ds_lev(icount,lev) = sc
+          source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+          npre = nn_lev(2,lev)
+          if(lev.gt.0) then 
+!---         if(icount.eq.0)(2,lev-1
+             nn = nn_lev(2,lev-1)
+             if (j.eq.NYs.and.icount-1.eq.nbound_lev(lev)) then 
+                 nj = nbound_lev(lev-1)+1
+             else if (j.eq.NYs.and.icount-1.gt.nbound_lev(lev)) then 
+                 nj = ilev_t(icount-1,lev, 2) + 1
+                 if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 1) + 1
+             else
+                 nj = ilev_t(icount-1,lev, 2) + 1 
+             endif
+
+
+             ilev_t(icount,lev,1) = nj
+             ilev_t(icount,lev,2) = nj+1
+             ilev_t(icount,lev,5) = 2
+          endif
+          ilev_t(icount,lev,6) = npre
        enddo
        if (mod(NYf-Nys,istep).ne.0.or.NYf-NYs.le.istep) then 
           if (lev.eq.0) then
@@ -1308,7 +721,11 @@ Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
              STOP
           endif
           icount = icount +1 
-          ilev_t(icount,lev)=-1
+          nn = nn_lev(2,lev-1)
+          nj = ilev_t(icount-1,lev,2) +1 
+          ilev_t(icount,lev,1) = nj
+          ilev_t(icount,lev,5) = 1
+          ilev_t(icount,lev,6) = -1
        endif
        ncountlev(lev)=icount
     enddo
@@ -1324,18 +741,36 @@ Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
           xc=0; yc=0; sc=0; sourcec=0
           do k=1,istep
              leafcount=leafcount+1
-             x  = xs_lev(leafcount,levmax,1)
-             y  = ys_lev(leafcount,levmax,1)
-             s  = ds_lev(leafcount,levmax,1)
-             source(neqs:neqf) = source_bound_lev(leafcount,neqs:neqf,levmax,1)
+             x  = xs_tmp(leafcount,1)
+             y  = xs_tmp(leafcount,2)
+             s  = ds_tmp(leafcount)
+             source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
              xc = x + xc;yc= y+ yc; sc= s+ sc;sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
           enddo
           icount = icount+1
-          xs_lev(icount,lev,2) = xc/float(istep)
-          ys_lev(icount,lev,2) = yc/float(istep)
-          ds_lev(icount,lev,2) = sc
-          source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-          ilev_t(icount,lev)=1
+          xs_lev(icount,lev) = xc/float(istep)
+          ys_lev(icount,lev) = yc/float(istep)
+          ds_lev(icount,lev) = sc
+          source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+          npre = nn_lev(1,lev)
+          if(lev.gt.0) then 
+!---         if(icount.eq.0)(2,lev-1
+             nn = nn_lev(1,lev-1)
+             if (i.eq.NXs.and.icount-1.eq.nbound_lev(lev)) then 
+                 nj = nbound_lev(lev-1)+1
+             else if (i.eq.NXs.and.icount-1.gt.nbound_lev(lev)) then 
+                 nj = ilev_t(icount-1,lev, 2) + 1
+                 if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 1) + 1
+             else
+                 nj = ilev_t(icount-1,lev, 2) + 1 
+             endif
+
+
+             ilev_t(icount,lev,1) = nj
+             ilev_t(icount,lev,2) = nj+1
+             ilev_t(icount,lev,5) = 2
+          endif
+          ilev_t(icount,lev,6) = npre
        enddo
        if (mod(NXf-NXs,istep).ne.0.or.NXf-NXs.le.istep) then 
           if (lev.eq.0) then
@@ -1343,7 +778,11 @@ Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
              STOP
           endif
           icount = icount +1 
-          ilev_t(icount,lev)=-1
+          nn = nn_lev(1,lev-1)
+          nj = ilev_t(icount-1,lev,2) +1 
+          ilev_t(icount,lev,1) = nj
+          ilev_t(icount,lev,5) = 1
+          ilev_t(icount,lev,6) = -1
        endif
        ncountlev(lev)=icount
     enddo
@@ -1361,18 +800,36 @@ Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
           xc=0; yc=0; sc=0; sourcec=0
           do k=1,istep
              leafcount=leafcount+1
-             x  = xs_lev(leafcount,levmax,1)
-             y  = ys_lev(leafcount,levmax,1)
-             s  = ds_lev(leafcount,levmax,1)
-             source(neqs:neqf) = source_bound_lev(leafcount,neqs:neqf,levmax,1)
+             x  = xs_tmp(leafcount,1)
+             y  = xs_tmp(leafcount,2)
+             s  = ds_tmp(leafcount)
+             source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
              xc = x + xc;yc= y+ yc; sc= s+ sc;sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
           enddo
           icount = icount+1
-          xs_lev(icount,lev,2) = xc/float(istep)
-          ys_lev(icount,lev,2) = yc/float(istep)
-          ds_lev(icount,lev,2) = sc
-          source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-          ilev_t(icount,lev)=1
+          xs_lev(icount,lev) = xc/float(istep)
+          ys_lev(icount,lev) = yc/float(istep)
+          ds_lev(icount,lev) = sc
+          source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+          npre = nn_lev(1,lev)
+          if(lev.gt.0) then 
+!---         if(icount.eq.0)(2,lev-1
+             nn = nn_lev(1,lev-1)
+             if (i.eq.NXs.and.icount-1.eq.nbound_lev(lev)) then 
+                 nj = nbound_lev(lev-1)+1
+             else if (i.eq.NXs.and.icount-1.gt.nbound_lev(lev)) then 
+                 nj = ilev_t(icount-1,lev, 2) + 1
+                 if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 1) + 1
+             else
+                 nj = ilev_t(icount-1,lev, 2) + 1 
+             endif
+
+
+             ilev_t(icount,lev,1) = nj
+             ilev_t(icount,lev,2) = nj+1
+             ilev_t(icount,lev,5) = 2
+          endif
+          ilev_t(icount,lev,6) = npre
        enddo
        if (mod(NXf-NXs,istep).ne.0.or.NXf-NXs.le.istep) then 
           if (lev.eq.0) then
@@ -1380,7 +837,11 @@ Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
              STOP
           endif
           icount = icount +1 
-          ilev_t(icount,lev)=-1
+          nn = nn_lev(1,lev-1)
+          nj = ilev_t(icount-1,lev,2) +1 
+          ilev_t(icount,lev,1) = nj
+          ilev_t(icount,lev,5) = 1
+          ilev_t(icount,lev,6) = -1
        endif
        ncountlev(lev)=icount
     enddo
@@ -1400,7 +861,7 @@ Subroutine build_level_nbound_new(NXs,NXf,NYs,NYf,neqs,neqf)
 !      enddo
 !   enddo
 !stop
-End Subroutine build_level_nbound_new
+End Subroutine build_level_nbound
 
 !-------------------------------------------------------------------------!
 !-> Subroutine calc_normalderiv                                           !
@@ -1411,143 +872,145 @@ End Subroutine build_level_nbound_new
 !   difference approximation is used:                                     !
 !   1/h((25/12)f(i,j)-4(i-1,j) + 3f(i-2,j) - 4/3 f(i-3),j) + 0.25f(i-4,j) !
 !-------------------------------------------------------------------------!
-Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
+Subroutine build_level_nbound_3d(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
+    use mpi
     Implicit None
     integer,intent(in):: NXs, NXf, NYs, NYf, NZs, NZf,neqs,neqf
-    integer          :: icount, istep, lev, nleaf, leafcount, leafmax, leafstart, leaffin, ires, leafacc
-    integer          :: nleaflev, nleafroot,ncountlev(0:levmax)
+    integer          :: icount, istep, lev, nleaf, leafcount, leafmax, leafstart, leaffin, ires, leafacc,lf
+    integer          :: nleaflev, nleafroot,ncountlev(0:levmax),istepj,n1s,n1f,n2s,n2f,nj,npre
     integer          :: m, l, il, im, mm, nn, iresroot, NNX, NNY, NNZ, NNX0, NNY0, NNZ0
     double precision :: x, y, z, s, source(neqf), xc, yc, zc, sc, sourcec(neqf)
     double precision,allocatable :: xs_tmp(:,:),ds_tmp(:),s_tmp(:,:)
+    integer, allocatable  :: nn_lev(:,:)
+    integer  :: my_rank,ierr
     character *16    :: filout
 
-
+    call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
     leafmax=2
     istep    = 2**levmax
     
     allocate (nbound_lev(0:levmax))             ; nbound_lev = 0
     nbound_lev(0) = nbound
-    allocate (source_bound_lev(nbound_lev(0),neqs:neqf,0:levmax,leafmax)); source_bound_lev     = 0.d0
-    allocate (xs_lev(nbound_lev(0),0:levmax,leafmax)); xs_lev     = 0.d0
-    allocate (ys_lev(nbound_lev(0),0:levmax,leafmax)); ys_lev     = 0.d0
-    allocate (zs_lev(nbound_lev(0),0:levmax,leafmax)); ys_lev     = 0.d0
-    allocate (ds_lev(nbound_lev(0),0:levmax,leafmax)); ds_lev     = 0.d0  
-    allocate (ilev_t(nbound_lev(0),0:levmax)); ilev_t     = 0
-     
+    allocate (source_bound_lev(nbound_lev(0),neqs:neqf,0:levmax)); source_bound_lev     = 0.d0
+    allocate (xs_lev(nbound_lev(0),0:levmax)); xs_lev     = 0.d0
+    allocate (ys_lev(nbound_lev(0),0:levmax)); ys_lev     = 0.d0
+    allocate (zs_lev(nbound_lev(0),0:levmax)); ys_lev     = 0.d0
+    allocate (ds_lev(nbound_lev(0),0:levmax)); ds_lev     = 0.d0  
+    allocate (ilev_t(nbound_lev(0),0:levmax,6)); ilev_t     = 0
+    allocate (nn_lev(3,0:levmax)); nn_lev=0.d0
     allocate (xs_tmp(nbound,3),ds_tmp(nbound),s_tmp(nbound,1:neqf))
-     xs_tmp(1:nbound,1) = 0.25d0 * (x_s(1,:) + x_s(2,:) + x_s(3,:) + x_s(4,:))
-     xs_tmp(1:nbound,2) = 0.25d0 * (y_s(1,:) + y_s(2,:) + y_s(3,:) + y_s(4,:))
-     xs_tmp(1:nbound,3) = 0.25d0 * (z_s(1,:) + z_s(2,:) + z_s(3,:) + z_s(4,:))
+
+    xs_tmp(1:nbound,1) = 0.25d0 * (x_s(1,:) + x_s(2,:) + x_s(3,:) + x_s(4,:))
+    xs_tmp(1:nbound,2) = 0.25d0 * (y_s(1,:) + y_s(2,:) + y_s(3,:) + y_s(4,:))
+    xs_tmp(1:nbound,3) = 0.25d0 * (z_s(1,:) + z_s(2,:) + z_s(3,:) + z_s(4,:))
     ds_tmp(1:nbound) = d_s(:)
     do neq=neqs,neqf
        s_tmp(1:nbound,neq)  = source_bound(neq,1:nbound)
     enddo
 
-   
-!   !It might seem a  little bit complex but it isnt.
-!   !tree in 2d surfaces means that the tree has 4 leaf's at each level
-!   we start the tree building using the 0-th level  nodes(0th=coarser)
-!   since we know the information at levmax(finer)  we loop the finer grid
-!   using istep. istep is  2 because,2  in 2 in j make the 4 leafs
-!   the stucture is
-!   0-th node -->nleaf
-!   n leaf is the accumulative number of leaf of the 0th node
-!      1
-!     /\
-!    2  3
-!   /\  /\
-!  4 5  6 7
-! 
-!
-! so we know that nleaf 4 of 0th node 4 refers at the second level(it's easy to find out that)
-!
-! the structure is build from levmax to  0th level
-! we find the first leaf  for each  level and and we add up one for each leaf on the level until we finish.
-! because the structure on the finer level is known in a stuctured 2d grid fashion
-! in order to assign the correct nodes to the leads we need to loop through the grid.
-! Also we know that each level has members both in i and j direction 
-! that's we we want to scan using 2d grid patches
-! 
-! ires is the resolution of each level.so finer 
-!      level has resolution of 1(each member has is the finest you can have)
-! 
-! for level  levmax -1 ires = 4 in 3d or ires 2 in 2d
-!  
-! in 3d we split the ires in 2 direction again because of the structured grid fine data we have.
-! we need htat splitting beacuse the data for each level is reconstructed from the original fine data
-! So for level levmax -1 we need to cycle through the 4 elements(in 3d) ,2 in idirection 2 in j direction
-! for level levmax -2 we need to cycle through 16 elements.
-!
-! Why didn't i use the 4 elements of the previous level?I wanted to use the original data.even thought because
-! of the linear interpolation of the data it could be the same using the 4 elements of lev -1
-!
-! source(lev-1) = Sum(source(levmax)*Area(levmax))/Sum(Area(levmax))
-!
-! Because it's surface is a 2d grid with it's own numbering. we use leafacc to know the accumulated number 
-! when changing sides (we map x_s(nod) to a specific leaf)
-!
-!
-!
-! Don't be afraid of  this :leafcount = leafacc + (k- NZs -1 + im  + (m-1) ) * NNY + (j -Nys + il +(l-1))
-! node = (j-1)*NY + k
-! k,j give the global index : think k - NZs -1 as j-1
-!                             think j - NYs    as i
-! The global index cycles at 0th level steps(coarser) so
-!                            im,il give the starting node for each level
-!                            (m-1),(l-1) give the node of the elemmenet for each level(-1 beacuse im,il have one)
 
+!FINER LEVEL 0 -COARSER LEVEL levmax
 
-!tree defined at cells
+!The tree level is built.It supports levels that are not exactly divided.In this case a dummy cell is added 
+!in the coarser level and when you encounter that in the tree routine you automatically go to the next level.
+!The tree is defined at cells not at nodes.
+!the basic structure is the ilev_t matrix 
+!ilev_t(1:4) are the corresponding finer level cells for each coarse cell
+!dummy can have more than 2 cell because each coarser level is define as groups of four
+!ilev_t(5) are how many cells are there(normally 4,dummy 2)
+!ilev_t(6) >0 if normal cell,-1 if dummy cell in i direction,-2 in dummy cell in j direction
     NNZ = NZf  - NZs 
     NNY = NYf  - NYs 
     NNX = NXf  - NXs 
-
     icount   = 0
     leafcount= 0
     leafacc  = 0
     ncountlev=0
-!----------
+
+!store  how many cells in each level in each direction for later use in building the tree
+    do lev=0,levmax
+       istep    = 2**lev
+       nn_lev(1,lev) = int( (NXf-NXs) / istep)
+       nn_lev(2,lev) = int( (NYf-NYs) / istep)
+       nn_lev(3,lev) = int( (NZf-NZs) / istep)
+!if not divided exactly dummy cell
+       if (mod(NXf-NXs, istep).ne.0) nn_lev(1,lev) = nn_lev(1,lev) +1
+       if (mod(NYf-NYs, istep).ne.0) nn_lev(2,lev) = nn_lev(2,lev) +1
+       if (mod(NZf-NZs, istep).ne.0) nn_lev(3,lev) = nn_lev(3,lev) +1
+    enddo
+!----------Start for each plane
     nbound_lev=0
     i  = Nxs
     do lev=0,levmax
        istep    = 2**lev
+!n1s,n2s to define the same if's in each plane
+       n2s=NZs;n2f=NZf -istep
+       n1s=NYs;n1f=NYf -istep
        icount=nbound_lev(lev)
-       leafcount=nbound_lev(0)
-       do k = NZs, NZf - istep,istep
-          do j = NYs,NYf - istep,istep
-                        !we use l-1 and m-1 because the 1 is already asigned at il,im
-                        !sources at points
-                        !leafcount = leafacc + (k - NZs +im + (m-1)) * NNY + (j - NYs+1 + il +(l-1))
-                        !sources at cells
+       lf=nbound_lev(0)
+       do k = n2s, n2f,istep
+          do j = n1s, n1f,istep
              xc=0;yc=0;zc=0;sc=0;sourcec=0
-             do im =1,istep
-                leafcount = leafcount+1
-                x  = xs_tmp(leafcount,1)
-                y  = xs_tmp(leafcount,2)
-                z  = xs_tmp(leafcount,3)
-                s  = ds_tmp(leafcount)
-                source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                
-                
-                xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+!the levels are build based on the finer level
+             do mm =1,istep
+                do nn =1,istep
+                   leafcount =lf+(k-NZs)*NNY + (j-NYs) + (mm-1)*NNY+ nn
+                   x  = xs_tmp(leafcount,1)
+                   y  = xs_tmp(leafcount,2)
+                   z  = xs_tmp(leafcount,3)
+                   s  = ds_tmp(leafcount)
+                   source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
+                   
+                   
+                   xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
+                   sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+               enddo
              enddo
              icount = icount + 1
-             xs_lev(icount,lev,2) = xc/float(istep)
-             ys_lev(icount,lev,2) = yc/float(istep)
-             zs_lev(icount,lev,2) = zc/float(istep)
-             ds_lev(icount,lev,2) = sc
-             source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-             ilev_t(icount,lev)=1
+             xs_lev(icount,lev) = xc/float(istep**2)
+             ys_lev(icount,lev) = yc/float(istep**2)
+             zs_lev(icount,lev) = zc/float(istep**2)
+             ds_lev(icount,lev) = sc
+             source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+             npre = nn_lev(2,lev)
+!for levels greater than 0 find the child cells
+             if(lev.gt.0) then 
+                nn = nn_lev(2,lev-1)
+!for the first cell of the plane 
+                if (j.eq.n1s.and.icount-1.eq.nbound_lev(lev)) then 
+                    nj = nbound_lev(lev-1)+1
+!for the first cell of the line 
+                else if (j.eq.n1s.and.icount-1.gt.nbound_lev(lev)) then 
+                    nj = ilev_t(icount-1,lev, 3) + 1
+!if the previous cell is dummy 
+                    if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 2) + 1
+                else
+                    nj = ilev_t(icount-1,lev, 2) + 1 
+                endif
+
+                ilev_t(icount,lev,1) = nj
+                ilev_t(icount,lev,2) = nj+1
+                ilev_t(icount,lev,3) = nj+nn+1
+                ilev_t(icount,lev,4) = nj+nn
+                ilev_t(icount,lev,5) = 4
+             endif
+                ilev_t(icount,lev,6) = npre
            enddo!j
             if (mod(NYf-NYs,istep).ne.0.or.NYf-NYs.le.istep) then 
                if (lev.eq.0) then
                   write(*,*) 'something is very wrong with levels.lev0 should not be in here 1'
-                  write(*,*) istep,Nyf-NYs
+                  write(*,*) istep,NYf-NYs
                   STOP
                endif
+!for dummy cells in the ith direction
                icount = icount +1 
-               ilev_t(icount,lev)=-1
+               nn = nn_lev(2,lev-1)
+               nj = ilev_t(icount-1,lev,2) +1 
+!in the ith direction the two cells are nj,nj+nn
+               ilev_t(icount,lev,1) = nj
+               ilev_t(icount,lev,2) = nj+nn
+               ilev_t(icount,lev,5) = 2
+               ilev_t(icount,lev,6) = -1
             endif
         enddo!k
         if (mod(NZf-NZs,istep).ne.0.or.NZf-NZs.le.istep) then 
@@ -1556,72 +1019,86 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                   write(*,*) istep,NZf-NZs
               STOP
            endif
-           icount = icount +1 
-           ilev_t(icount,lev)=-1
+!for dummy cells in the jth direction a loop is needed
+           do j = n1s, n1f,istep
+!last corner not taken twice
+              if (j.eq.n1f.and.mod(NYf-NYs,istep).ne.0) cycle
+              icount = icount +1 
+              if(j.eq.n1s.and.ilev_t(icount-1,lev,6).gt.0) then 
+                  nj = ilev_t(icount-1,lev,3) +1 
+              else!even if ilev_t(icount-1,lev,6).lt.0 I want ilev_t(icount-1,lev,2)
+                  nj = ilev_t(icount-1,lev,2) +1 
+              endif
+!in the jth direction the two cells are nj,nj+1
+              nn = nn_lev(2,lev-1)
+              ilev_t(icount,lev,1) = nj
+              ilev_t(icount,lev,2) = nj+1
+              ilev_t(icount,lev,5) = 2
+              ilev_t(icount,lev,6) =-2
+           enddo
         endif
         ncountlev(lev)=icount
     enddo!lev
     nbound_lev=ncountlev
 
-!   do lev=0,levmax
-!      write(filout,'(a,i2.2)') 'lev',lev
-!      open(27,file=filout)
-!      do k=1,nbound_lev(lev)
-!         if(ilev_t(k,lev).eq.1) write(27,*)xs_lev(k,lev,2),ys_lev(k,lev,2),zs_lev(k,lev,2)
-!      enddo
-!   enddo
-!stop
-!do i=1,icount
-!      lev=0
-!      leafstart = 0
-
-!      do lev = 0,levmax
-!          open(14,file='lev'//char(48+lev),access='APPEND')
-!          leafstart = leafstart +4**max(0,(lev-1))
-!          leaffin   = leafstart +4**(lev) -1
-!          if (lev.eq.0) leaffin=1
-!          do j=leafstart,leaffin
-!             write(14,'(3(e28.17,1x))') xs_lev(i,0,j),ys_lev(i,0,j),zs_lev(i,0,j)
-!          enddo
-!         close(14)
-!      enddo
-!   enddo
-!   do i=1,nbound
-!      write(1511,*) xs_tmp(i,1),xs_tmp(i,2),xs_tmp(i,3)
-!   enddo
 
     !---XMAX BOUNDARY----
     i  = Nxs
     do lev=0,levmax
        istep    = 2**lev
+!n1s,n2s to define the same if's in each plane
+       n2s=NZs;n2f=NZf-istep
+       n1s=NYs;n1f=NYf-istep
        icount=nbound_lev(lev)
-       leafcount=nbound_lev(0)
-       do k = NZs, NZf - istep,istep
-          do j = NYs,NYf - istep,istep
-                        !we use l-1 and m-1 because the 1 is already asigned at il,im
-                        !sources at points
-                        !leafcount = leafacc + (k - NZs +im + (m-1)) * NNY + (j - NYs+1 + il +(l-1))
-                        !sources at cells
+       lf=nbound_lev(0)
+       do k = n2s, n2f,istep
+          do j = n1s,n1f,istep
+!the levels are build based on the finer level
              xc=0;yc=0;zc=0;sc=0;sourcec=0
-             do im =1,istep
-                leafcount = leafcount+1
-                x  = xs_tmp(leafcount,1)
-                y  = xs_tmp(leafcount,2)
-                z  = xs_tmp(leafcount,3)
-                s  = ds_tmp(leafcount)
-                source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                
-                
-                xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+             do mm =1,istep
+                do nn =1,istep
+                   leafcount =lf+(k-NZs)*NNY + (j-NYs) + (mm-1)*NNY+ nn
+                   x  = xs_tmp(leafcount,1)
+                   y  = xs_tmp(leafcount,2)
+                   z  = xs_tmp(leafcount,3)
+                   s  = ds_tmp(leafcount)
+                   source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
+                   
+                   
+                   xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
+                   sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+                enddo
              enddo
              icount = icount + 1
-             xs_lev(icount,lev,2) = xc/float(istep)
-             ys_lev(icount,lev,2) = yc/float(istep)
-             zs_lev(icount,lev,2) = zc/float(istep)
-             ds_lev(icount,lev,2) = sc
-             source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-             ilev_t(icount,lev)=1
+             xs_lev(icount,lev) = xc/float(istep**2)
+             ys_lev(icount,lev) = yc/float(istep**2)
+             zs_lev(icount,lev) = zc/float(istep**2)
+             ds_lev(icount,lev) = sc
+             source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+             npre = nn_lev(2,lev)
+!for levels greater than 0 find the child cells
+             if(lev.gt.0) then 
+                nn = nn_lev(2,lev-1)
+!for the first cell of the plane 
+                if (j.eq.n1s.and.icount-1.eq.nbound_lev(lev)) then 
+                    nj = nbound_lev(lev-1)+1
+                else if (j.eq.n1s.and.icount-1.gt.nbound_lev(lev)) then 
+!for the first cell of the line 
+                    nj = ilev_t(icount-1,lev, 3) + 1 
+!if the previous cell is dummy 
+                    if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 2) + 1
+                else
+                    nj = ilev_t(icount-1,lev, 2) + 1 
+                endif
+      
+                ilev_t(icount,lev,1) = nj
+                ilev_t(icount,lev,2) = nj+1
+                ilev_t(icount,lev,3) = nj+nn+1
+                ilev_t(icount,lev,4) = nj+nn
+                ilev_t(icount,lev,5) = 4
+
+             endif
+                ilev_t(icount,lev,6) = npre
            enddo!j
             if (mod(NYf-NYs,istep).ne.0.or.NYf-NYs.le.istep) then 
                if (lev.eq.0) then
@@ -1630,7 +1107,12 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                   STOP
                endif
                icount = icount +1 
-               ilev_t(icount,lev)=-1
+               nj = ilev_t(icount-1,lev,2) +1 
+               nn = nn_lev(2,lev-1)
+               ilev_t(icount,lev,1) = nj
+               ilev_t(icount,lev,2) = nj+nn
+               ilev_t(icount,lev,5) = 2
+               ilev_t(icount,lev,6) =-1
             endif
         enddo!k
         if (mod(NZf-NZs,istep).ne.0.or.NZf-NZs.le.istep) then 
@@ -1639,8 +1121,20 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                   write(*,*) istep,NZf-NZs
               STOP
            endif
-           icount = icount +1 
-           ilev_t(icount,lev)=-1
+           do j = n1s, n1f,istep
+              if (j.eq.n1f.and.mod(NYf-NYs,istep).ne.0) cycle
+              icount = icount +1 
+              if(j.eq.n1s.and.ilev_t(icount-1,lev,6).gt.0) then 
+                  nj = ilev_t(icount-1,lev,3) +1 
+              else!even if ilev_t(icount-1,lev,6).lt.0 I want ilev_t(icount-1,lev,2)
+                  nj = ilev_t(icount-1,lev,2) +1 
+              endif
+              nn = nn_lev(2,lev-1)
+              ilev_t(icount,lev,1) = nj
+              ilev_t(icount,lev,2) = nj+1
+              ilev_t(icount,lev,5) = 2
+              ilev_t(icount,lev,6) =-2
+           enddo
         endif
         ncountlev(lev)=icount
     enddo!lev
@@ -1650,34 +1144,53 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
     j  = NYs
     do lev=0,levmax
        istep    = 2**lev
+       n2s=NZs;n2f=NZf-istep
+       n1s=NXs;n1f=NXf-istep
        icount=nbound_lev(lev)
-       leafcount=nbound_lev(0)
-       do k = NZs, NZf - istep,istep
-          do i = NXs,NXf - istep,istep
-                        !we use l-1 and m-1 because the 1 is already asigned at il,im
-                        !sources at points
-                        !leafcount = leafacc + (k - NZs +im + (m-1)) * NNY + (j - NYs+1 + il +(l-1))
-                        !sources at cells
+       lf=nbound_lev(0)
+       do k = n2s,n2f,istep
+          do i = n1s,n1f,istep
              xc=0;yc=0;zc=0;sc=0;sourcec=0
-             do im =1,istep
-                leafcount = leafcount+1
-                x  = xs_tmp(leafcount,1)
-                y  = xs_tmp(leafcount,2)
-                z  = xs_tmp(leafcount,3)
-                s  = ds_tmp(leafcount)
-                source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                
-                
-                xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+             do mm =1,istep
+                do nn =1,istep
+                   leafcount =lf+(k-NZs)*NNX + (i-NXs) + (mm-1)*NNX+ nn
+                   x  = xs_tmp(leafcount,1)
+                   y  = xs_tmp(leafcount,2)
+                   z  = xs_tmp(leafcount,3)
+                   s  = ds_tmp(leafcount)
+                   source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
+                   
+                   
+                   xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
+                   sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+                enddo
              enddo
              icount = icount + 1
-             xs_lev(icount,lev,2) = xc/float(istep)
-             ys_lev(icount,lev,2) = yc/float(istep)
-             zs_lev(icount,lev,2) = zc/float(istep)
-             ds_lev(icount,lev,2) = sc
-             source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-             ilev_t(icount,lev)=1
+             xs_lev(icount,lev) = xc/float(istep**2)
+             ys_lev(icount,lev) = yc/float(istep**2)
+             zs_lev(icount,lev) = zc/float(istep**2)
+             ds_lev(icount,lev) = sc
+             source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+             npre = nn_lev(1,lev)
+             if(lev.gt.0) then 
+
+                nn = nn_lev(1,lev-1)
+                if (i.eq.n1s.and.icount-1.eq.nbound_lev(lev)) then 
+                    nj = nbound_lev(lev-1)+1
+                else if (i.eq.n1s.and.icount-1.gt.nbound_lev(lev)) then 
+                    nj = ilev_t(icount-1,lev, 3) + 1 
+                    if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 2) + 1
+                else
+                    nj = ilev_t(icount-1,lev, 2) + 1 
+                endif
+                ilev_t(icount,lev,1) = nj
+                ilev_t(icount,lev,2) = nj+1
+                ilev_t(icount,lev,3) = nj+nn+1
+                ilev_t(icount,lev,4) = nj+nn
+                ilev_t(icount,lev,5) = 4
+             endif
+             ilev_t(icount,lev,6)=npre
+           !if (mod(NXf-NXs,istep).ne.0) ilev_t(icount,lev)=ilev_t(icount,lev) + 1
            enddo!j
             if (mod(NXf-NXs,istep).ne.0.or.NXf-NXs.le.istep) then 
                if (lev.eq.0) then
@@ -1686,7 +1199,12 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                   STOP
                endif
                icount = icount +1 
-               ilev_t(icount,lev)=-1
+               nj = ilev_t(icount-1,lev,2) +1 
+               nn = nn_lev(1,lev-1)
+               ilev_t(icount,lev,1) = nj
+               ilev_t(icount,lev,2) = nj+nn
+               ilev_t(icount,lev,5) = 2
+               ilev_t(icount,lev,6) =-1
             endif
         enddo!k
         if (mod(NZf-NZs,istep).ne.0.or.NZf-NZs.le.istep) then 
@@ -1695,8 +1213,20 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                   write(*,*) istep,NZf-NZs
               STOP
            endif
-           icount = icount +1 
-           ilev_t(icount,lev)=-1
+           do i = n1s, n1f,istep
+              if (i.eq.n1f.and.mod(NXf-NXs,istep).ne.0) cycle
+              icount = icount +1 
+              if(i.eq.n1s.and.ilev_t(icount-1,lev,6).gt.0) then 
+                  nj = ilev_t(icount-1,lev,3) +1 
+              else!even if ilev_t(icount-1,lev,6).lt.0 I want ilev_t(icount-1,lev,2)
+                  nj = ilev_t(icount-1,lev,2) +1 
+              endif
+              nn = nn_lev(1,lev-1)
+              ilev_t(icount,lev,1) = nj
+              ilev_t(icount,lev,2) = nj+1
+              ilev_t(icount,lev,5) = 2
+              ilev_t(icount,lev,6) =-2
+           enddo
         endif
         ncountlev(lev)=icount
     enddo!lev
@@ -1706,35 +1236,57 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
     !---YMAX BOUNDARY----
     j  = NYf
     do lev=0,levmax
-       istep    = 2**lev
+       istep   =2**lev
+       n2s=NZs;n2f=NZf-istep
+       n1s=NXs;n1f=NXf-istep
        icount=nbound_lev(lev)
-       leafcount=nbound_lev(0)
-       do k = NZs, NZf - istep,istep
-          do i = NXs,NXf - istep,istep
+       lf=nbound_lev(0)
+       do k = n2s, n2f,istep
+          do i = n1s,n1f,istep
                         !we use l-1 and m-1 because the 1 is already asigned at il,im
                         !sources at points
                         !leafcount = leafacc + (k - NZs +im + (m-1)) * NNY + (j - NYs+1 + il +(l-1))
                         !sources at cells
              xc=0;yc=0;zc=0;sc=0;sourcec=0
-             do im =1,istep
-                leafcount = leafcount+1
-                x  = xs_tmp(leafcount,1)
-                y  = xs_tmp(leafcount,2)
-                z  = xs_tmp(leafcount,3)
-                s  = ds_tmp(leafcount)
-                source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                
-                
-                xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+             do mm =1,istep 
+                do nn =1,istep 
+                   leafcount =lf+(k-NZs)*NNX + (i-NXs) + (mm-1)*NNX+ nn
+                   x  = xs_tmp(leafcount,1)
+                   y  = xs_tmp(leafcount,2)
+                   z  = xs_tmp(leafcount,3)
+                   s  = ds_tmp(leafcount)
+                   source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
+                   
+                   
+                   xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
+                   sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+                enddo
              enddo
              icount = icount + 1
-             xs_lev(icount,lev,2) = xc/float(istep)
-             ys_lev(icount,lev,2) = yc/float(istep)
-             zs_lev(icount,lev,2) = zc/float(istep)
-             ds_lev(icount,lev,2) = sc
-             source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-             ilev_t(icount,lev)=1
+             xs_lev(icount,lev) = xc/float(istep**2)
+             ys_lev(icount,lev) = yc/float(istep**2)
+             zs_lev(icount,lev) = zc/float(istep**2)
+             ds_lev(icount,lev) = sc
+             source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+             npre = nn_lev(1,lev)
+             if(lev.gt.0) then 
+                nn = nn_lev(1,lev-1)
+                if (i.eq.n1s.and.icount-1.eq.nbound_lev(lev)) then 
+                    nj = nbound_lev(lev-1)+1
+                else if (i.eq.n1s.and.icount-1.gt.nbound_lev(lev)) then 
+                    nj = ilev_t(icount-1,lev, 3) + 1
+                    if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 2) + 1
+                else
+                    nj = ilev_t(icount-1,lev, 2) + 1 
+                endif
+                ilev_t(icount,lev,1) = nj
+                ilev_t(icount,lev,2) = nj+1
+                ilev_t(icount,lev,3) = nj+nn+1
+                ilev_t(icount,lev,4) = nj+nn
+                ilev_t(icount,lev,5) = 4
+             endif
+             ilev_t(icount,lev,6)=npre
+           !if (mod(NXf-NXs,istep).ne.0) ilev_t(icount,lev)=ilev_t(icount,lev) + 1
            enddo!j
             if (mod(NXf-NXs,istep).ne.0.or.NXf-NXs.le.istep) then 
                if (lev.eq.0) then
@@ -1743,7 +1295,12 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                   STOP
                endif
                icount = icount +1 
-               ilev_t(icount,lev)=-1
+               nj = ilev_t(icount-1,lev,2) +1 
+               nn = nn_lev(1,lev-1)
+               ilev_t(icount,lev,1) = nj
+               ilev_t(icount,lev,2) = nj+nn
+               ilev_t(icount,lev,5) = 2
+               ilev_t(icount,lev,6) =-1
             endif
         enddo!k
         if (mod(NZf-NZs,istep).ne.0.or.NZf-NZs.le.istep) then 
@@ -1752,8 +1309,20 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
                   write(*,*) istep,NZf-NZs
               STOP
            endif
-           icount = icount +1 
-           ilev_t(icount,lev)=-1
+           do i = n1s, n1f,istep
+              if (i.eq.n1f.and.mod(NXf-NXs,istep).ne.0) cycle
+              icount = icount +1 
+              if(i.eq.n1s.and.ilev_t(icount-1,lev,6).gt.0) then 
+                  nj = ilev_t(icount-1,lev,3) +1 
+              else!even if ilev_t(icount-1,lev,6).lt.0 I want ilev_t(icount-1,lev,2)
+                  nj = ilev_t(icount-1,lev,2) +1 
+              endif
+              nn = nn_lev(1,lev-1)
+              ilev_t(icount,lev,1) = nj
+              ilev_t(icount,lev,2) = nj+1
+              ilev_t(icount,lev,5) = 2
+              ilev_t(icount,lev,6) =-2
+           enddo
         endif
         ncountlev(lev)=icount
     enddo!lev
@@ -1762,54 +1331,89 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
     !---ZMIN BOUNDARY----
     k  = NZs
     do lev=0,levmax
-       istep    = 2**lev
+       istep  = 2**lev
+       n2s=NYs;n2f=NYf-istep
+       n1s=NXs;n1f=NXf-istep
        icount=nbound_lev(lev)
-       leafcount=nbound_lev(0)
-       do j= NYs, NYf - istep,istep
-          do i = NXs,NXf - istep,istep
-                        !we use l-1 and m-1 because the 1 is already asigned at il,im
-                        !sources at points
-                        !leafcount = leafacc + (k - NZs +im + (m-1)) * NNY + (j - NYs+1 + il +(l-1))
-                        !sources at cells
+       lf=nbound_lev(0)
+       do j= n2s,n2f,istep
+          do i = n1s,n1f,istep
              xc=0;yc=0;zc=0;sc=0;sourcec=0
-             do im =1,istep
-                leafcount = leafcount+1
-                x  = xs_tmp(leafcount,1)
-                y  = xs_tmp(leafcount,2)
-                z  = xs_tmp(leafcount,3)
-                s  = ds_tmp(leafcount)
-                source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                
-                
-                xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+             do mm =1,istep
+                do nn =1,istep
+                   leafcount =lf+(j-NYs)*NNX + (i-NXs) + (mm-1)*NNX+ nn
+                   x  = xs_tmp(leafcount,1)
+                   y  = xs_tmp(leafcount,2)
+                   z  = xs_tmp(leafcount,3)
+                   s  = ds_tmp(leafcount)
+                   source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
+                   
+                   
+                   xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
+                   sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+                enddo
              enddo
              icount = icount + 1
-             xs_lev(icount,lev,2) = xc/float(istep)
-             ys_lev(icount,lev,2) = yc/float(istep)
-             zs_lev(icount,lev,2) = zc/float(istep)
-             ds_lev(icount,lev,2) = sc
-             source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-             ilev_t(icount,lev)=1
+             xs_lev(icount,lev) = xc/float(istep**2)
+             ys_lev(icount,lev) = yc/float(istep**2)
+             zs_lev(icount,lev) = zc/float(istep**2)
+             ds_lev(icount,lev) = sc
+             source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+             npre = nn_lev(1,lev)
+             if(lev.gt.0) then 
+                nn = nn_lev(1,lev-1)
+                if (i.eq.n1s.and.icount-1.eq.nbound_lev(lev)) then 
+                    nj = nbound_lev(lev-1)+1
+                else if (i.eq.n1s.and.icount-1.gt.nbound_lev(lev)) then 
+                    nj = ilev_t(icount-1,lev, 3) + 1 
+                    if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 2) + 1
+                else
+                    nj = ilev_t(icount-1,lev, 2) + 1 
+                endif
+                ilev_t(icount,lev,1) = nj
+                ilev_t(icount,lev,2) = nj+1
+                ilev_t(icount,lev,3) = nj+nn+1
+                ilev_t(icount,lev,4) = nj+nn
+                ilev_t(icount,lev,5) = 4
+             endif
+             ilev_t(icount,lev,6)=npre
+         !  if (mod(NXf-NXs,istep).ne.0) ilev_t(icount,lev)=ilev_t(icount,lev) + 1
            enddo!j
             if (mod(NXf-NXs,istep).ne.0.or.NXf-NXs.le.istep) then 
                if (lev.eq.0) then
-                  write(*,*) 'something is very wrong with levels.lev0 should not be in here'
+                  write(*,*) 'something is very wrong with levels.lev0 should not be in here 9'
                   write(*,*) istep,NXf-NXs
                   STOP
                endif
                icount = icount +1 
-               ilev_t(icount,lev)=-1
+               nj = ilev_t(icount-1,lev,2) +1 
+               nn = nn_lev(1,lev-1)
+               ilev_t(icount,lev,1) = nj
+               ilev_t(icount,lev,2) = nj+nn
+               ilev_t(icount,lev,5) = 2
+               ilev_t(icount,lev,6) =-1
             endif
         enddo!k
         if (mod(NYf-NYs,istep).ne.0.or.NYf-NYs.le.istep) then 
            if (lev.eq.0) then
-              write(*,*) 'something is very wrong with levels.lev0 should not be in here'
+              write(*,*) 'something is very wrong with levels.lev0 should not be in here 10' 
                   write(*,*) istep,NYf-NYs
               STOP
            endif
-           icount = icount +1 
-           ilev_t(icount,lev)=-1
+           do i = n1s, n1f,istep
+              if (i.eq.n1f.and.mod(NXf-NXs,istep).ne.0) cycle
+              icount = icount +1 
+              if(i.eq.n1s.and.ilev_t(icount-1,lev,6).gt.0) then 
+                  nj = ilev_t(icount-1,lev,3) +1 
+              else!even if ilev_t(icount-1,lev,6).lt.0 I want ilev_t(icount-1,lev,2)
+                  nj = ilev_t(icount-1,lev,2) +1 
+              endif
+              nn = nn_lev(1,lev-1)
+              ilev_t(icount,lev,1) = nj
+              ilev_t(icount,lev,2) = nj+1
+              ilev_t(icount,lev,5) = 2
+              ilev_t(icount,lev,6) =-2
+           enddo
         endif
         ncountlev(lev)=icount
     enddo!lev
@@ -1818,65 +1422,109 @@ Subroutine build_level_nbound_3d_new(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
     !---ZMAX BOUNDARY----
     k  = NZf
     do lev=0,levmax
-       istep    = 2**lev
+       istep =2**lev
+       n2s=NYs;n2f=NYf-istep
+       n1s=NXs;n1f=NXf-istep
        icount=nbound_lev(lev)
-       leafcount=nbound_lev(0)
-       do j = NYs, NYf - istep,istep
-          do i = NXs,NXf - istep,istep
-                        !we use l-1 and m-1 because the 1 is already asigned at il,im
-                        !sources at points
-                        !leafcount = leafacc + (k - NZs +im + (m-1)) * NNY + (j - NYs+1 + il +(l-1))
-                        !sources at cells
+       lf=nbound_lev(0)
+       do j = n2s, n2f,istep
+          do i = n1s,n1f,istep
              xc=0;yc=0;zc=0;sc=0;sourcec=0
-             do im =1,istep
-                leafcount = leafcount+1
-                x  = xs_tmp(leafcount,1)
-                y  = xs_tmp(leafcount,2)
-                z  = xs_tmp(leafcount,3)
-                s  = ds_tmp(leafcount)
-                source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
-                
-                
-                xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
-                sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+             do mm =1,istep
+                do nn =1,istep
+                   leafcount =lf+(j-NYs)*NNX + (i-NXs) + (mm-1)*NNX+ nn
+                   x  = xs_tmp(leafcount,1)
+                   y  = xs_tmp(leafcount,2)
+                   z  = xs_tmp(leafcount,3)
+                   s  = ds_tmp(leafcount)
+                   source(neqs:neqf) = s_tmp(leafcount,neqs:neqf)
+                   
+                   
+                   xc = x + xc;yc = y + yc;zc = z + zc; sc= s + sc
+                   sourcec(neqs:neqf)=source(neqs:neqf)*s + sourcec(neqs:neqf)
+                enddo
              enddo
              icount = icount + 1
-             xs_lev(icount,lev,2) = xc/float(istep)
-             ys_lev(icount,lev,2) = yc/float(istep)
-             zs_lev(icount,lev,2) = zc/float(istep)
-             ds_lev(icount,lev,2) = sc
-             source_bound_lev(icount,neqs:neqf,lev,2) = sourcec(neqs:neqf)/sc
-             ilev_t(icount,lev)=1
+             xs_lev(icount,lev) = xc/float(istep**2)
+             ys_lev(icount,lev) = yc/float(istep**2)
+             zs_lev(icount,lev) = zc/float(istep**2)
+             ds_lev(icount,lev) = sc
+             source_bound_lev(icount,neqs:neqf,lev) = sourcec(neqs:neqf)/sc
+             npre = nn_lev(1,lev)
+             if(lev.gt.0) then 
+                nn = nn_lev(1,lev-1)
+                if (i.eq.n1s.and.icount-1.eq.nbound_lev(lev)) then 
+                    nj = nbound_lev(lev-1)+1
+                else if (i.eq.n1s.and.icount-1.gt.nbound_lev(lev)) then 
+                    nj = ilev_t(icount-1,lev, 3) + 1 
+                    if (ilev_t(icount-1,lev,6).lt.0) nj = ilev_t(icount-1,lev, 2) + 1
+                else
+                    nj = ilev_t(icount-1,lev, 2) + 1 
+                endif
+                nn = nn_lev(1,lev-1)
+                ilev_t(icount,lev,1) = nj
+                ilev_t(icount,lev,2) = nj+1
+                ilev_t(icount,lev,3) = nj+nn+1
+                ilev_t(icount,lev,4) = nj+nn
+                ilev_t(icount,lev,5) = 4
+             endif
+             ilev_t(icount,lev,6)=npre
+    !       if (mod(NXf-NXs,istep).ne.0) ilev_t(icount,lev)=ilev_t(icount,lev) + 1
            enddo!j
             if (mod(NXf-NXs,istep).ne.0.or.NXf-NXs.le.istep) then 
                if (lev.eq.0) then
-                  write(*,*) 'something is very wrong with levels.lev0 should not be in here'
+                  write(*,*) 'something is very wrong with levels.lev0 should not be in here 11'
                   write(*,*) istep,NXf-NXs
                   STOP
                endif
                icount = icount +1 
-               ilev_t(icount,lev)=-1
+               nj = ilev_t(icount-1,lev,2) +1 
+               nn = nn_lev(1,lev-1)
+               ilev_t(icount,lev,1) = nj
+               ilev_t(icount,lev,2) = nj+nn
+               ilev_t(icount,lev,5) = 2
+               ilev_t(icount,lev,6) =-1
             endif
         enddo!k
         if (mod(NYf-NYs,istep).ne.0.or.NYf-NYs.le.istep) then 
            if (lev.eq.0) then
-              write(*,*) 'something is very wrong with levels.lev0 should not be in here'
+              write(*,*) 'something is very wrong with levels.lev0 should not be in here12'
                   write(*,*) istep,NYf-NYs
               STOP
            endif
-           icount = icount +1 
-           ilev_t(icount,lev)=-1
+           do i = n1s, n1f,istep
+              if (i.eq.n1f.and.mod(NXf-NXs,istep).ne.0) cycle
+              icount = icount +1 
+              if(i.eq.n1s.and.ilev_t(icount-1,lev,6).gt.0) then 
+                  nj = ilev_t(icount-1,lev,3) +1 
+              else!even if ilev_t(icount-1,lev,6).lt.0 I want ilev_t(icount-1,lev,2)
+                  nj = ilev_t(icount-1,lev,2) +1 
+              endif
+              nn = nn_lev(1,lev-1)
+              ilev_t(icount,lev,1) = nj
+              ilev_t(icount,lev,2) = nj+1
+              ilev_t(icount,lev,5) = 2
+              ilev_t(icount,lev,6) =-2
+           enddo
         endif
         ncountlev(lev)=icount
     enddo!lev
     nbound_lev=ncountlev
 
     if (nbound_lev(0).ne.nbound) then 
-        write(*,*) 'nbound_lev problem',nbound_lev(0),icount
+        write(*,*) 'nbound_lev problem',nbound_lev(0),icount,nbound
         stop
     endif
 
+   !do lev=0,levmax
+   !   open(13,file='level'//char(48+lev)//'_'//char(48+my_rank))
+   !   do icount=1,nbound_lev(lev)
+   !      write(13,'(15(e28.17,1x))') xs_lev(icount,lev,2),ys_lev(icount,lev,2),zs_lev(icount,lev,2),&
+   !                                 ds_lev(icount,lev,2),source_bound_lev(icount,neqs:neqf,lev,2) 
 
-
+   !   enddo
+   !   close(13)
+   !enddo
+  
      deallocate(xs_tmp,ds_tmp,s_tmp)
-End Subroutine build_level_nbound_3d_new
+End Subroutine build_level_nbound_3d

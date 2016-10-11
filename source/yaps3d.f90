@@ -25,6 +25,7 @@
         nullify(QP)
         nullify(XP)
 
+        
         call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
         call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
 
@@ -42,11 +43,14 @@
         itree=iyntree !tree algorithm for sources
         lmax=ilevmax!maximum level
         ! 1 is the Nblocks not needed needs fix
+         if (npmsize.ne.neqf) stop
         call pmesh(SOL_pm_bl,RHS_pm_bl,QP,XP,&
                    Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
 
-        !write(outfil1,'(a9,i2.2)') 'blockgrow',nb
-        !call  writesol_bl_3d(outfil1,Dpm_fine,Xbound_tmp,NN_bl_tmp,NN_tmp)
+        ! write(outfil1,'(a5,i2.2)') 'block',nb
+        ! call writesol_bl_3d(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp,npmsize)
+       ! write(outfil1,'(a9,i2.2)') 'blockgrow',nb
+       ! call  writesol_bl_3d(outfil1,Dpm_fine,Xbound_tmp,NN_bl_tmp,NN_tmp)
         !---Block definitions
 
         !Define coarse pm from which values will be interpolated for the final solve
@@ -57,6 +61,7 @@
           if(my_rank.eq.0)endtime = MPI_WTIME()
           if(my_rank.eq.0) write(199,*)'pmesh',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
         allocate(SOL_pm_coarse(npmsize,NXpm_c,NYpm_c,NZpm_c),RHS_pm_coarse(npmsize,NXpm_c,NYpm_c,NZpm_c))
+        SOL_pm_coarse=0.d0;RHS_pm_coarse=0.d0
 
 
         !call definevort(RHS_pm_coarse,MACH,Xbound_coarse,Dpm_coarse,NN_coarse,NN_bl_coarse,iproj)
@@ -100,25 +105,17 @@
 
             NZs = 1
             NZf = NNbl(3,nbc)
-
-           !NXs    = NNbl_bl(1,nbc)
-           !NXf    = NNbl_bl(4,nbc)
-
-           !NYs = NNbl_bl(2,nbc)
-           !NYf = NNbl_bl(5,nbc)
-
-           !NZs = NNbl_bl(3,nbc)
-           !NZf = NNbl_bl(6,nbc)
             !---------------------------------------------------------------------------------
             do k=NZs,NZf,nc
-                 do i=NXs,NXf,nc
-                      do j=NYs,NYf,nc
-                          X(1) = Xbound_bl(1,nbc) + (i-1)*Dpm_fine(1)
-                          X(2) = Xbound_bl(2,nbc) + (j-1)*Dpm_fine(2)
-                          X(3) = Xbound_bl(3,nbc) + (k-1)*Dpm_fine(3)
-                          inode = int((X(1) - Xbound_coarse(1))/ Dpm_coarse(1)) +1
-                          jnode = int((X(2) - Xbound_coarse(2))/ Dpm_coarse(2)) +1
-                          knode = int((X(3) - Xbound_coarse(3))/ Dpm_coarse(3)) +1
+               do j=NYs,NYf,nc
+                  do i=NXs,NXf,nc
+                          X(1) = Xbound_bl(1,nbc) + (i-1)*Dpm_fine(1)!1.d-12
+                          X(2) = Xbound_bl(2,nbc) + (j-1)*Dpm_fine(2)!1.d-12
+                          X(3) = Xbound_bl(3,nbc) + (k-1)*Dpm_fine(3)!1.d-12
+    ! nint because in perfect division int might give i or i-1
+                          inode = nint(((X(1) - Xbound_coarse(1))/ Dpm_coarse(1))) +1
+                          jnode = nint(((X(2) - Xbound_coarse(2))/ Dpm_coarse(2))) +1
+                          knode = nint(((X(3) - Xbound_coarse(3))/ Dpm_coarse(3))) +1
                           if (i.eq.NXs) NN_coarse_map(1,nbc) = inode
                           if (i.eq.NXf) NN_coarse_map(4,nbc) = inode
                           if (j.eq.NYs) NN_coarse_map(2,nbc) = jnode
@@ -144,10 +141,18 @@
         if (my_rank.eq.0) then
             allocate(SOL_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
             allocate(RHS_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
-            SOL_pm_tmp(:,:,:,:)= SOL_pm_sample(:,:,:,:,nb)
+            SOL_pm_tmp(1:npmsize,1:NN_coarse(1),1:NN_coarse(2),1:NN_coarse(3))=&
+            SOL_pm_sample(1:npmsize,1:NN_coarse(1),1:NN_coarse(2),1:NN_coarse(3),nb)
+    !   if (my_rank.eq.0) then
+    !        outfil2='coarse_laplacian'
+    !        call writesol_bl_3d(RHS_pm_coarse,SOL_pm_tmp,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse,npmsize)
+    !   endif
             NN_map(:)=NN_coarse_map(:,nb)
             !calculate the RHS of the poisson problem using the sampled values
-            call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf)
+
+
+       !End Subroutine calc_laplacian_coarse_3d
+            call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
             RHS_pm_coarse=0
             RHS_pm_coarse=RHS_pm_coarse + RHS_pm_tmp
             !0 proccesor gathers the rhs using sampled values from all cpu's
@@ -166,7 +171,7 @@
             allocate(RHS_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
             SOL_pm_tmp(:,:,:,:)= SOL_pm_sample(:,:,:,:,nb)
             NN_map(:)=NN_coarse_map(:,nb)
-            call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf)
+            call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
             dest=0
             call mpimat4(mat4,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3))
             call MPI_SEND(SOL_pm_tmp,1,mat4,dest,1,MPI_COMM_WORLD,ierr)
@@ -210,10 +215,10 @@
         !if (my_rank.eq.1)starttime = MPI_WTIME()
         SOL_pm_coarse=0.d0
         iynbc=1
-        itree=0!iyntree
-        lmax=ilevmax
+        itree=iyntree
+        lmax=ilevmax-1
         if(my_rank.eq.0)starttime = MPI_WTIME()
-        if (itree.eq.0) levmax=1
+        if (itree.eq.0) lmax=1
         call pmesh(SOL_pm_coarse,RHS_pm_coarse,QP,XP,&
              Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
         ! if(my_rank.eq.1)endtime = MPI_WTIME()
@@ -221,10 +226,6 @@
 
           if(my_rank.eq.0)endtime = MPI_WTIME()
           if(my_rank.eq.0) write(199,*)'pmesh_coarse',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
-      ! if (my_rank.eq.0) then
-      !      outfil2='coarse_laplacian'
-      !      call writegrow_3d(RHS_pm_coarse,SOL_pm_coarse,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse)
-      ! endif
         ! Interpolate to all blocks
         
         ! At this point we calculate boundary conditions for each block and solve it 
@@ -347,8 +348,6 @@
         call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
 
-        ! write(outfil1,'(a5,i2.2)') 'block',nb
-        ! call writesol_bl_3d(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp)
 
         !allocate(SOL_pm_er(NN_fine(1),NN_fine(2),1,7))
         !allocate(velvrx_tmp(NXpm,NYpm,NZpm) ,velvry_tmp(NXpm,NYpm,NZpm),velvrz_tmp(NXpm,NYpm,NZpm))
@@ -1909,12 +1908,12 @@
 
     End Subroutine yaps3d
 
-   Subroutine calc_laplacian_coarse_3d(SOL_pm,RHS_pm,NN,NN_bl,Dpm,NN_map,neqs,neqf)
+   Subroutine calc_laplacian_coarse_3d(SOL_pm,RHS_pm,NN,NN_bl,Dpm,NN_map,neqs,neqf,npmsize)
        Implicit none
 
-       integer,intent(in) :: NN(3),NN_bl(6),NN_map(6),neqs,neqf
-       double precision,intent(out)   :: RHS_pm(neqf,NN(1),NN(2),NN(3))
-       double precision,intent(in)    :: SOL_pm(neqf,NN(1),NN(2),NN(3)),Dpm(3)
+       integer,intent(in) :: NN(3),NN_bl(6),NN_map(6),neqs,neqf,npmsize
+       double precision,intent(out)   :: RHS_pm(npmsize,NN(1),NN(2),NN(3))
+       double precision,intent(in)    :: SOL_pm(npmsize,NN(1),NN(2),NN(3)),Dpm(3)
        integer                        :: i,j,k
 
 
@@ -1930,7 +1929,6 @@
                 SOL_pm(neqs:neqf,i,j-1,k))/Dpm(2)**2 + &
                (SOL_pm(neqs:neqf,i,j,k+1) - 2*SOL_pm(neqs:neqf,i,j,k) +&
                 SOL_pm(neqs:neqf,i,j,k-1))/Dpm(3)**2  
-     
               enddo
           enddo
        enddo

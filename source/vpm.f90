@@ -228,6 +228,17 @@ if (WhatTodo.lt.4) then
 
 
   if (WhatToDo.eq.1) then 
+          if (allocated(velvrx_pm)) then 
+              deallocate(velvrx_pm,velvry_pm,velvrz_pm)
+              allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
+              velvrx_pm=0.d0;velvry_pm=0.d0;velvrz_pm=0.d0
+          else 
+              allocate (velvrx_pm(NXpm,NYpm,NZpm),velvry_pm(NXpm,NYpm,NZpm),velvrz_pm(Nxpm,NYpm,NZpm))
+              velvrx_pm=0.d0;velvry_pm=0.d0;velvrz_pm=0.d0
+          endif      
+
+         nullify(velx);nullify(vely);nullify(velz)
+         velx=>velvrx_pm; vely=>velvry_pm;velz=>velvrz_pm
      if (my_rank.eq.0)then 
          velvrx_pm=0.d0;velvry_pm=0.d0;velvrz_pm=0.d0
 
