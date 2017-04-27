@@ -282,8 +282,13 @@ if (WhatTodo.lt.4) then
         endif
         if(iynslice.ne.0) call writesolXavatar(iynslice)
          call writeline
-
-    endif
+        k=int(0.5*NZpm);j=int(0.5*NYpm)
+        if (iynslice.eq.-1) then 
+          do i=NXs_bl(1),NXf_bl(1)
+            write(32,*) velvrx_pm(i,j,k),velvry_pm(i,j,k),velvrz_pm(i,j,k)
+          enddo
+        endif
+    endif 
         itypeb=1
         call back_to_particles_par
          
@@ -477,7 +482,7 @@ Subroutine define_sizes
   use parvar
   use pmgrid
   use MPI
-  integer    :: nsiz(3),nsiz_bl(3)
+  integer    :: nsiz(3),nsiz_bl(3),istep,lev
 
   integer    :: i,j,k,np,my_rank,ierr,nb
  !double precision              :: Xbound_tmp(6)
@@ -619,6 +624,33 @@ Subroutine define_sizes
            !NXf_bl(1)=NN_bl(4);NYf_bl(1)=NN_bl(5);NZf_bl(1)=NN_bl(6)
            !print *,'final mesh',NN
             !-----
+ if (my_rank.eq.0) then 
+            do lev=0,ilevmax
+              istep   = 2**lev
+!!!!!!!!if not divided exactly dummy cell
+             if (ND.eq.2) then 
+              if (int((NNbl_bl(4,1)- NNbl_bl(1,1))/istep).eq.0.or.&
+                  int((NNbl_bl(5,1)- NNbl_bl(2,1))/istep).eq.0) then 
+                  ilevmax = lev-1
+                  print *, 'Changing number of levels',ilevmax
+                  exit
+              endif
+             else
+
+              if (int((NNbl_bl(4,1)- NNbl_bl(1,1))/istep).eq.0.or.&
+                  int((NNbl_bl(5,1)- NNbl_bl(2,1))/istep).eq.0.or.&
+                  int((NNbl_bl(5,1)- NNbl_bl(2,1))/istep).eq.0) then 
+                  ilevmax = lev-1
+                  print *, 'Changing number of levels',ilevmax
+                  exit
+              endif
+
+             endif
+           !  print *, nn_lev(1:2,lev)
+           enddo
+          endif
+          call MPI_BCAST(ilevmax,1,MPI_INTEGER,0,MPI_COMM_WORLD,ierr)
+
         
             
      

@@ -1043,7 +1043,7 @@ Subroutine build_level_nbound_3d(NXs, NXf, NYs, NYf,NZs,NZf,neqs,neqf)
 
 
     !---XMAX BOUNDARY----
-    i  = Nxs
+    i  = Nxf
     do lev=0,levmax
        istep    = 2**lev
 !n1s,n2s to define the same if's in each plane

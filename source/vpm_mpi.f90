@@ -515,6 +515,69 @@ Subroutine proj_gath(NN)
         call MPI_TYPE_FREE(mat4,ierr)
     endif
 End Subroutine 
+Subroutine proj_gath(NN)
+    use hybrid_interface
+    use pmgrid
+    use pmeshpar
+    use parvar
+    use MPI
+    integer,intent(in) :: NN(3)
+    integer :: my_rank,np,ierr,i,NN_proj(6),nn1,nn2,nn3,NN_tmp(6)
+    integer :: dest,NVR_pr,NVR_r,source,mat4
+    integer :: status(MPI_STATUS_SIZE)
+    double precision,allocatable:: RHS_pmtmp(:,:,:,:)
+    double precision            :: xpmax,xpmin,ypmax,ypmin,zpmax,zpmin
+
+    call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
+    call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
+    if (ND.eq.2) then 
+        xpmax=maxval(XP_scat(1,:));xpmin=minval(XP_scat(1,:))
+        ypmax=maxval(XP_scat(2,:));ypmin=minval(XP_scat(2,:))
+        imax = int((xpmax - XMIN_pm) / DXpm) + 1;imin=int((xpmin - XMIN_pm) / DXpm) + 1
+        jmax = int((ypmax - YMIN_pm) / DYpm) + 1;jmin=int((ypmin - YMIN_pm) / DYpm) + 1
+        NN_proj(1)=max(imin-interf_iproj,1);NN_proj(2)=max(jmin-interf_iproj,1);NN_proj(3)=1       !call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
+        NN_proj(4)=min(imax+interf_iproj,NN(1));NN_proj(5)=min(jmax+interf_iproj,NN(2));NN_proj(6)=1       !call  projlib
+    else
+        xpmax=maxval(XP_scat(1,:));xpmin=minval(XP_scat(1,:))
+        ypmax=maxval(XP_scat(2,:));ypmin=minval(XP_scat(2,:))
+        zpmax=maxval(XP_scat(3,:));zpmin=minval(XP_scat(3,:))
+        imax = int((xpmax - XMIN_pm) / DXpm) + 1;imin=int((xpmin - XMIN_pm) / DXpm) + 1
+        jmax = int((ypmax - YMIN_pm) / DYpm) + 1;jmin=int((ypmin - YMIN_pm) / DYpm) + 1
+        kmax = int((zpmax - ZMIN_pm) / DZpm) + 1;kmin=int((zpmin - ZMIN_pm) / DZpm) + 1
+        NN_proj(1)=max(imin-interf_iproj,1);NN_proj(2)=max(jmin-interf_iproj,1);NN_proj(3)=max(kmin-interf_iproj,1)     !call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
+        NN_proj(4)=min(imax+interf_iproj,NN(1));NN_proj(5)=min(jmax+interf_iproj,NN(2));NN_proj(6)=min(kmax+interf_iproj,NN(3))      
+    endif
+    if (my_rank.ne.0) then
+        call MPI_SEND(NN_proj,6,MPI_INTEGER,0,1,MPI_COMM_WORLD,ierr)
+        nn1 = NN_proj(4) - NN_proj(1)+1
+        nn2 = NN_proj(5) - NN_proj(2)+1
+        nn3 = NN_proj(6) - NN_proj(3)+1
+        allocate(RHS_pmtmp(neqpm+1,nn1,nn2,nn3))
+        RHS_pmtmp(1:neqpm+1,1:nn1,1:nn2,1:nn3)=&
+        RHS_pm(1:neqpm+1,NN_proj(1):NN_proj(4),NN_proj(2):NN_proj(5),NN_proj(3):NN_proj(6)) 
+        call mpimat4(mat4,neqpm+1,nn1,nn2,nn3)
+        call MPI_SEND(RHS_pmtmp,1,mat4,0,1,MPI_COMM_WORLD,ierr)
+        call MPI_TYPE_FREE(mat4,ierr)
+        deallocate(RHS_pmtmp)
+    else
+        do source=1,np-1
+            call MPI_RECV(NN_tmp,6,MPI_INTEGER,source,1,MPI_COMM_WORLD,status,ierr)
+            nn1 = NN_tmp(4) - NN_tmp(1)+1
+            nn2 = NN_tmp(5) - NN_tmp(2)+1
+            nn3 = NN_tmp(6) - NN_tmp(3)+1
+            allocate(RHS_pmtmp(neqpm+1,nn1,nn2,nn3))
+            call mpimat4(mat4,neqpm+1,nn1,nn2,nn3)
+            call MPI_RECV(RHS_pmtmp,1,mat4,source,1,MPI_COMM_WORLD,status,ierr)
+            RHS_pm(1:neqpm+1,NN_tmp(1):NN_tmp(4),NN_tmp(2):NN_tmp(5),NN_tmp(3):NN_tmp(6))=&
+            RHS_pm(1:neqpm+1,NN_tmp(1):NN_tmp(4),NN_tmp(2):NN_tmp(5),NN_tmp(3):NN_tmp(6)) + &
+            RHS_pmtmp(1:neqpm+1,1:nn1,1:nn2,1:nn3)
+            deallocate(RHS_pmtmp)
+            call MPI_TYPE_FREE(mat4,ierr)
+        enddo
+    endif
+
+End Subroutine 
+
 
 Subroutine mpimat2_pm(mat2,orig1,orig2,nsize1,nsize2,istart)
 use MPI

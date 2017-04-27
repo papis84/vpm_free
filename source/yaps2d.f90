@@ -160,7 +160,7 @@
             deallocate(SOL_pm_tmp,RHS_pm_tmp)
         endif
         !We broadcast SOL_pm_sample(which is the addition of Sampled solution from proccesors to all cpu's
-        call mpimat5(mat5,npmsize,NN_coarse(1),NN_coarse(2),1,BLOCKS)
+        call mpimat5old(mat5,npmsize,NN_coarse(1),NN_coarse(2),1,BLOCKS)
         call MPI_BCAST(SOL_pm_sample,1,mat5,0,MPI_COMM_WORLD,ierr)
         call MPI_TYPE_FREE(mat5,ierr)
 

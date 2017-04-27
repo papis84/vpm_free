@@ -76,36 +76,6 @@ Subroutine solve_eq(NXs,NXf,NYs,NYf,neq)
         enddo
     enddo
 
-    !    OPEN(UNIT=1,FILE=filename2//char(48+nb))
-    !  ! WRITE(1,*)'ZONE I=',NXpm,' J=',NYpm,' F=POINT'
-    !    DO J=NYs,NYf
-    !      DO I=NXs,NXf
-    !        XPM=XMIN_pm+(I-1)*DXpm
-    !        YPM=YMIN_pm+(J-1)*DYpm
-    !        WRITE(1,'(5(F20.16,1x))')XPM,YPM,SOL_pm(I,J,nb,neq),RHS_pm(I,J,nb,neq),Cont_pm(I,j)
-    !      ENDDO
-    !    ENDDO
-    !    CLOSE(1)
-
-    !    OPEN(UNIT=1,FILE=filename4//char(48+nb))
-    !  ! WRITE(1,*)'ZONE I=',NXpm,' J=',NYpm,' F=POINT'
-    !    DO J=NYs,NYf
-    !      DO I=NXs,NXf
-    !        XPM=XMIN_pm+(I-1)*DXpm
-    !        YPM=YMIN_pm+(J-1)*DYpm
-    !        WRITE(1,'(3(F20.16,1x))')XPM,YPM,abs(SOL_pm(I,J,nb,neq)-Cont_pm(I,j))/abs(Cont_pm(I,J))
-    !      ENDDO
-    !        WRITE(1,*)
-    !    ENDDO
-    !    DO I=NXs,NXf
-    !     DO J=NYs,NYf
-    !        XPM=XMIN_pm+(I-1)*DXpm
-    !        YPM=YMIN_pm+(J-1)*DYpm
-    !        WRITE(1,'(3(F20.16,1x))')XPM,YPM,abs(SOL_pm(I,J,nb,neq)-Cont_pm(I,j))/abs(Cont_pm(I,J))
-    !      ENDDO
-    !        WRITE(1,*)
-    !    ENDDO
-    !    CLOSE(1)
 End Subroutine solve_eq!_i
 
 Subroutine solve_eq_0(NXs,NXf,NYs,NYf,neq)

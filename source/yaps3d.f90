@@ -17,6 +17,10 @@
         double precision,allocatable :: SOL_pm_tmp(:,:,:,:),RHS_pm_tmp(:,:,:,:)
         double precision             :: Xbound_tmp(6)
         integer                      :: NN_tmp(3),NN_bl_tmp(6),iynbc,iface12,iface34,iface56,ibound,itree,lmax
+        integer                      :: ibctyp_c
+        integer                      :: origsize(5),sendsize(5),start(5),isize1,isize2,isize3,NN_tmpc(6)
+
+
 
         !Assign variables
         nullify(SOL_pm_bl,RHS_pm_bl)
@@ -43,9 +47,10 @@
         itree=iyntree !tree algorithm for sources
         lmax=ilevmax!maximum level
         ! 1 is the Nblocks not needed needs fix
-         if (npmsize.ne.neqf) stop
+        if (npmsize.ne.neqf) stop
+        ibctyp_c = ibctyp 
         call pmesh(SOL_pm_bl,RHS_pm_bl,QP,XP,&
-                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
+                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp_c,neqs,neqf,iynbc,0,itree,lmax)
 
         ! write(outfil1,'(a5,i2.2)') 'block',nb
         ! call writesol_bl_3d(RHS_pm_bl,SOL_pm_bl,Dpm_fine,outfil1,Xbound_tmp,NN_bl_tmp,NN_tmp,npmsize)
@@ -59,7 +64,7 @@
 
 
           if(my_rank.eq.0)endtime = MPI_WTIME()
-          if(my_rank.eq.0) write(199,*)'pmesh',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
+          if(my_rank.eq.0) write(199,*)'Poisson fine',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
         allocate(SOL_pm_coarse(npmsize,NXpm_c,NYpm_c,NZpm_c),RHS_pm_coarse(npmsize,NXpm_c,NYpm_c,NZpm_c))
         SOL_pm_coarse=0.d0;RHS_pm_coarse=0.d0
 
@@ -133,67 +138,132 @@
            enddo
 
           if(my_rank.eq.0)endtime = MPI_WTIME()
-          if(my_rank.eq.0) write(199,*)'pm_sample1',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
+          if(my_rank.eq.0) write(199,*)'mapnodes',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
-        if(my_rank.eq.0)starttime = MPI_WTIME()
-        !--BCAST Sol_pm_sample
-        nb=my_rank+1
-        if (my_rank.eq.0) then
-            allocate(SOL_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
-            allocate(RHS_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
-            SOL_pm_tmp(1:npmsize,1:NN_coarse(1),1:NN_coarse(2),1:NN_coarse(3))=&
-            SOL_pm_sample(1:npmsize,1:NN_coarse(1),1:NN_coarse(2),1:NN_coarse(3),nb)
-    !   if (my_rank.eq.0) then
-    !        outfil2='coarse_laplacian'
-    !        call writesol_bl_3d(RHS_pm_coarse,SOL_pm_tmp,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse,npmsize)
-    !   endif
-            NN_map(:)=NN_coarse_map(:,nb)
-            !calculate the RHS of the poisson problem using the sampled values
+!!      if(my_rank.eq.0)starttime = MPI_WTIME()
+!!      !--BCAST Sol_pm_sample
+!!      nb=my_rank+1
+!!      if (my_rank.eq.0) then
+!!          allocate(SOL_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
+!!          allocate(RHS_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
+!!          SOL_pm_tmp(1:npmsize,1:NN_coarse(1),1:NN_coarse(2),1:NN_coarse(3))=&
+!!          SOL_pm_sample(1:npmsize,1:NN_coarse(1),1:NN_coarse(2),1:NN_coarse(3),nb)
+!!  !   if (my_rank.eq.0) then
+!!  !        outfil2='coarse_laplacian'
+!!  !        call writesol_bl_3d(RHS_pm_coarse,SOL_pm_tmp,Dpm_coarse,outfil2,Xbound_coarse,NN_bl_coarse,NN_coarse,npmsize)
+!!  !   endif
+!!          NN_map(:)=NN_coarse_map(:,nb)
+!!          !calculate the RHS of the poisson problem using the sampled values
 
 
-       !End Subroutine calc_laplacian_coarse_3d
-            call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
-            RHS_pm_coarse=0
-            RHS_pm_coarse=RHS_pm_coarse + RHS_pm_tmp
-            !0 proccesor gathers the rhs using sampled values from all cpu's
+!!     !End Subroutine calc_laplacian_coarse_3d
+!!          call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
+!!          RHS_pm_coarse=0
+!!          RHS_pm_coarse=RHS_pm_coarse + RHS_pm_tmp
+!!          !0 proccesor gathers the rhs using sampled values from all cpu's
+!!          do nbc=2,BLOCKS
+!!              call mpimat4(mat4,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3))
+!!              source = nbc-1
+!!              call MPI_RECV(SOL_pm_tmp,1,mat4,source,1,MPI_COMM_WORLD,status,ierr)
+!!              call MPI_RECV(RHS_pm_tmp,1,mat4,source,1,MPI_COMM_WORLD,status,ierr)
+!!              SOL_pm_sample(:,:,:,:,nbc)=SOL_pm_tmp(:,:,:,:)
+!!              RHS_pm_coarse=RHS_pm_coarse + RHS_pm_tmp
+!!              call MPI_TYPE_FREE(mat4,ierr)
+!!          enddo
+!!          deallocate(SOL_pm_tmp,RHS_pm_tmp)
+!!      else
+!!          allocate(SOL_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
+!!          allocate(RHS_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
+!!          SOL_pm_tmp(:,:,:,:)= SOL_pm_sample(:,:,:,:,nb)
+!!          NN_map(:)=NN_coarse_map(:,nb)
+!!          call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
+!!          dest=0
+!!          call mpimat4(mat4,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3))
+!!          call MPI_SEND(SOL_pm_tmp,1,mat4,dest,1,MPI_COMM_WORLD,ierr)
+!!          call MPI_SEND(RHS_pm_tmp,1,mat4,dest,1,MPI_COMM_WORLD,ierr)
+!!          call MPI_TYPE_FREE(mat4,ierr)
+!!          deallocate(SOL_pm_tmp,RHS_pm_tmp)
+!!      endif
+!!      !We broadcast SOL_pm_sample(which is the addition of Sampled solution from proccesors to all cpu's
+!!        if(my_rank.eq.0)endtime = MPI_WTIME()
+!!        if(my_rank.eq.0) write(199,*)'pm_sample11',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
+!!      call mpimat5(mat5,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3),BLOCKS,BLOCKS,0)
+!!      call MPI_BCAST(SOL_pm_sample,1,mat5,0,MPI_COMM_WORLD,ierr)
+!!      call MPI_TYPE_FREE(mat5,ierr)
+
+!!      !We broadcast RHS based on the sampled solutions of all ranks
+!!      call mpimat4(mat4,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3))
+!!      call MPI_BCAST(RHS_pm_coarse,1,mat4,0,MPI_COMM_WORLD,ierr)
+!!      call MPI_TYPE_FREE(mat4,ierr)
+
+          if(my_rank.eq.0)starttime = MPI_WTIME()
+          nb=my_rank+1
+          RHS_pm_coarse=0
+          origsize(1)=npmsize;origsize(2)=NN_coarse(1);origsize(3)=NN_coarse(2)
+          origsize(4)=NN_coarse(3);origsize(5)=BLOCKS
+          if (my_rank.eq.0) then 
+
+           !isize1= NN_coarse_map(4,nbc)-NN_coarse_map(1,nb) + 1
+           !isize2= NN_coarse_map(5,nbc)-NN_coarse_map(2,nb) + 1
+           !allocate(SOL_pm_tmp(npmsize,isize1,isize2,1))
+           !allocate(RHS_pm_tmp(npmsize,isize1,isize2,1))
+           !call calc_laplacian_coarse(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
             do nbc=2,BLOCKS
-                call mpimat4(mat4,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3))
-                source = nbc-1
-                call MPI_RECV(SOL_pm_tmp,1,mat4,source,1,MPI_COMM_WORLD,status,ierr)
-                call MPI_RECV(RHS_pm_tmp,1,mat4,source,1,MPI_COMM_WORLD,status,ierr)
-                SOL_pm_sample(:,:,:,:,nbc)=SOL_pm_tmp(:,:,:,:)
-                RHS_pm_coarse=RHS_pm_coarse + RHS_pm_tmp
-                call MPI_TYPE_FREE(mat4,ierr)
+               isize1= NN_coarse_map(4,nbc)-NN_coarse_map(1,nbc) + 1
+               isize2= NN_coarse_map(5,nbc)-NN_coarse_map(2,nbc) + 1
+               isize3= NN_coarse_map(6,nbc)-NN_coarse_map(3,nbc) + 1
+               allocate(SOL_pm_tmp(npmsize,isize1,isize2,isize3))
+               call mpimat4(mat4,npmsize,isize1,isize2,isize3)
+               source = nbc-1
+               call MPI_RECV(SOL_pm_tmp,1,mat4,source,1,MPI_COMM_WORLD,status,ierr)
+               SOL_pm_sample(1:npmsize,&
+                             NN_coarse_map(1,nbc):NN_coarse_map(4,nbc),&
+                             NN_coarse_map(2,nbc):NN_coarse_map(5,nbc),&
+                             NN_coarse_map(3,nbc):NN_coarse_map(6,nbc),nbc)=&
+                             SOL_pm_tmp(1:npmsize,1:isize1,1:isize2,1:isize3)
+               call MPI_TYPE_FREE(mat4,ierr)
+               deallocate(SOL_pm_tmp)
             enddo
-            deallocate(SOL_pm_tmp,RHS_pm_tmp)
-        else
-            allocate(SOL_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
-            allocate(RHS_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
-            SOL_pm_tmp(:,:,:,:)= SOL_pm_sample(:,:,:,:,nb)
-            NN_map(:)=NN_coarse_map(:,nb)
-            call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
-            dest=0
-            call mpimat4(mat4,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3))
-            call MPI_SEND(SOL_pm_tmp,1,mat4,dest,1,MPI_COMM_WORLD,ierr)
-            call MPI_SEND(RHS_pm_tmp,1,mat4,dest,1,MPI_COMM_WORLD,ierr)
-            call MPI_TYPE_FREE(mat4,ierr)
-            deallocate(SOL_pm_tmp,RHS_pm_tmp)
-        endif
-        !We broadcast SOL_pm_sample(which is the addition of Sampled solution from proccesors to all cpu's
+          else
+              dest=0
+              isize1= NN_coarse_map(4,nb)-NN_coarse_map(1,nb)+1
+              isize2= NN_coarse_map(5,nb)-NN_coarse_map(2,nb)+1
+              isize3= NN_coarse_map(6,nb)-NN_coarse_map(3,nb) + 1
+              allocate(SOL_pm_tmp(npmsize,isize1,isize2,isize3))
+              SOL_pm_tmp(1:npmsize,1:isize1,1:isize2,1:isize3)=SOL_pm_sample(1:npmsize,&
+                                                        NN_coarse_map(1,nb):NN_coarse_map(4,nb),&
+                                                        NN_coarse_map(2,nb):NN_coarse_map(5,nb),&
+                                                        NN_coarse_map(3,nb):NN_coarse_map(6,nb),nb)
+              call mpimat4(mat4,npmsize,isize1,isize2,isize3)
+              call MPI_SEND(SOL_pm_tmp,1,mat4,dest,1,MPI_COMM_WORLD,ierr)
+              deallocate(SOL_pm_tmp)
+          endif
           if(my_rank.eq.0)endtime = MPI_WTIME()
-          if(my_rank.eq.0) write(199,*)'pm_sample11',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
-        if(my_rank.eq.0)starttime = MPI_WTIME()
-        call mpimat5(mat5,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3),BLOCKS)
-        call MPI_BCAST(SOL_pm_sample,1,mat5,0,MPI_COMM_WORLD,ierr)
-        call MPI_TYPE_FREE(mat5,ierr)
+          if(my_rank.eq.0) write(199,*)'sendzero',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
-        !We broadcast RHS based on the sampled solutions of all ranks
-        call mpimat4(mat4,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3))
-        call MPI_BCAST(RHS_pm_coarse,1,mat4,0,MPI_COMM_WORLD,ierr)
-        call MPI_TYPE_FREE(mat4,ierr)
+          if(my_rank.eq.0)starttime = MPI_WTIME()
+         call mpimat5(mat5,npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3),BLOCKS,BLOCKS,0)
+         call MPI_BCAST(SOL_pm_sample,1,mat5,0,MPI_COMM_WORLD,ierr)
+         call MPI_TYPE_FREE(mat5,ierr)
+          allocate(SOL_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
+          allocate(RHS_pm_tmp(npmsize,NN_coarse(1),NN_coarse(2),NN_coarse(3)))
 
           if(my_rank.eq.0)endtime = MPI_WTIME()
-          if(my_rank.eq.0) write(199,*)'pm_bcast',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
+          if(my_rank.eq.0) write(199,*)'bcast',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
+
+          RHS_pm_coarse=0
+          do nbc=1,BLOCKS
+             NN_map(:)=NN_coarse_map(:,nbc)
+             SOL_pm_tmp(:,:,:,:)= SOL_pm_sample(:,:,:,:,nbc)
+             NN_tmpc(1:6)=NN_coarse_map(1:6,nbc)
+             call calc_laplacian_coarse_3d(SOL_pm_tmp,RHS_pm_tmp,NN_coarse,NN_bl_coarse,Dpm_coarse,NN_map,neqs,neqf,npmsize)
+             RHS_pm_coarse=RHS_pm_coarse + RHS_pm_tmp
+          enddo
+           
+
+
+            deallocate(SOL_pm_tmp,RHS_pm_tmp)
+
 
         !add Sampling blocks
        !allocate (SOL_pm_sumsample(NN_coarse(1),NN_coarse(2),NN_coarse(3),7))
@@ -215,12 +285,18 @@
         !if (my_rank.eq.1)starttime = MPI_WTIME()
         SOL_pm_coarse=0.d0
         iynbc=1
-        itree=iyntree
-        lmax=ilevmax-1
+        if (iyntree.eq.1) then 
+            itree=1!iyntree
+            lmax=ilevmax-1
+        else
+            itree=0
+            lmax =1
+        endif
         if(my_rank.eq.0)starttime = MPI_WTIME()
         if (itree.eq.0) lmax=1
+        ibctyp_c=ibctyp
         call pmesh(SOL_pm_coarse,RHS_pm_coarse,QP,XP,&
-             Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
+             Xbound_coarse,DPm_coarse,NN_coarse,NN_bl_coarse,ND,1,ibctyp_c,neqs,neqf,iynbc,0,itree,lmax)
         ! if(my_rank.eq.1)endtime = MPI_WTIME()
         ! if(my_rank.eq.1) write(*,*)'Poisson Coarse=',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
@@ -340,8 +416,9 @@
         itree=0
         lmax=0
         if (my_rank.eq.0) starttime=MPI_WTIME()
+        ibctyp_c=ibctyp
         call pmesh(SOL_pm_bl,RHS_pm_bl,QP,XP,&
-                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp,neqs,neqf,iynbc,0,itree,lmax)
+                   Xbound_tmp,Dpm_fine,NN_tmp,NN_bl_tmp,ND,1,ibctyp_c,neqs,neqf,iynbc,0,itree,lmax)
         if(my_rank.eq.0)endtime = MPI_WTIME()
         if(my_rank.eq.0) write(199,*)'pmesh_final',int((endtime-starttime)/60),'m',mod(endtime-starttime,60.d0),'s'
 
@@ -1838,7 +1915,7 @@
             double precision :: projection_fun,addlocal,add(neq),add_sample(neq)
             integer          :: i_nb,j_nb,k_nb
 
-            iproj=3
+            iproj=4
             X(1) = Xbound_bl(1,nb) + (i-1)*Dpm_fine(1)
             X(2) = Xbound_bl(2,nb) + (j-1)*Dpm_fine(2)
             X(3) = Xbound_bl(3,nb) + (k-1)*Dpm_fine(3)
@@ -1846,9 +1923,9 @@
             !   SOL_pm_bl(i,j,1,1,nb)=SOL_pm_fine(inode,jnode,1,1)
             !inode =int(((X(1) - Xbound_coarse(1)) / Dpm_coarse(1))) + 1
             !jnode =int(((X(2) - Xbound_coarse(2)) / Dpm_coarse(2))) + 1
-            inode =int(nint((X(1) - Xbound_coarse(1)) / Dpm_coarse(1))) + 1
-            jnode =int(nint((X(2) - Xbound_coarse(2)) / Dpm_coarse(2))) + 1
-            knode =int(nint((X(3) - Xbound_coarse(3)) / Dpm_coarse(3))) + 1
+            inode =int(((X(1) - Xbound_coarse(1)) / Dpm_coarse(1))) + 1
+            jnode =int(((X(2) - Xbound_coarse(2)) / Dpm_coarse(2))) + 1
+            knode =int(((X(3) - Xbound_coarse(3)) / Dpm_coarse(3))) + 1
             !--We search the 4 nodes close to the particles
             nnb=0
             addlocal=0
@@ -1859,9 +1936,9 @@
                 endif
             enddo
             
-            do kc = knode-1, knode + 1
-               do jc = jnode-1 , jnode + 1
-                   do ic = inode-1 , inode + 1
+            do kc = knode-1, knode + 2
+               do jc = jnode-1 , jnode + 2
+                   do ic = inode-1 , inode + 2
                        add=0.d0
                        add_sample=0.d0
                        do nbc=1,BLOCKS
