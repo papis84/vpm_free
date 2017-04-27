@@ -481,7 +481,7 @@ Subroutine particles_gath
    !enddo
 End Subroutine particles_gath
 
-Subroutine proj_gath(NN)
+Subroutine proj_gathold(NN)
     use vpm_vars       
     use pmgrid
     use pmeshpar
@@ -516,7 +516,7 @@ Subroutine proj_gath(NN)
     endif
 End Subroutine 
 Subroutine proj_gath(NN)
-    use hybrid_interface
+    use vpm_vars       
     use pmgrid
     use pmeshpar
     use parvar
@@ -531,16 +531,16 @@ Subroutine proj_gath(NN)
     call MPI_Comm_Rank(MPI_COMM_WORLD,my_rank,ierr)
     call MPI_Comm_size(MPI_COMM_WORLD,np,ierr)
     if (ND.eq.2) then 
-        xpmax=maxval(XP_scat(1,:));xpmin=minval(XP_scat(1,:))
-        ypmax=maxval(XP_scat(2,:));ypmin=minval(XP_scat(2,:))
+        xpmax=maxval(XP_scatt(1,:));xpmin=minval(XP_scatt(1,:))
+        ypmax=maxval(XP_scatt(2,:));ypmin=minval(XP_scatt(2,:))
         imax = int((xpmax - XMIN_pm) / DXpm) + 1;imin=int((xpmin - XMIN_pm) / DXpm) + 1
         jmax = int((ypmax - YMIN_pm) / DYpm) + 1;jmin=int((ypmin - YMIN_pm) / DYpm) + 1
         NN_proj(1)=max(imin-interf_iproj,1);NN_proj(2)=max(jmin-interf_iproj,1);NN_proj(3)=1       !call  projlibinit(Xbound,Dpm,NN,NN_bl,EPSVOL,IDVPM,ND)
         NN_proj(4)=min(imax+interf_iproj,NN(1));NN_proj(5)=min(jmax+interf_iproj,NN(2));NN_proj(6)=1       !call  projlib
     else
-        xpmax=maxval(XP_scat(1,:));xpmin=minval(XP_scat(1,:))
-        ypmax=maxval(XP_scat(2,:));ypmin=minval(XP_scat(2,:))
-        zpmax=maxval(XP_scat(3,:));zpmin=minval(XP_scat(3,:))
+        xpmax=maxval(XP_scatt(1,:));xpmin=minval(XP_scatt(1,:))
+        ypmax=maxval(XP_scatt(2,:));ypmin=minval(XP_scatt(2,:))
+        zpmax=maxval(XP_scatt(3,:));zpmin=minval(XP_scatt(3,:))
         imax = int((xpmax - XMIN_pm) / DXpm) + 1;imin=int((xpmin - XMIN_pm) / DXpm) + 1
         jmax = int((ypmax - YMIN_pm) / DYpm) + 1;jmin=int((ypmin - YMIN_pm) / DYpm) + 1
         kmax = int((zpmax - ZMIN_pm) / DZpm) + 1;kmin=int((zpmin - ZMIN_pm) / DZpm) + 1
