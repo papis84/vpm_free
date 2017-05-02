@@ -1931,7 +1931,7 @@
             addlocal=0
             do nbc = 1,BLOCKS
                 if(map_nodes(inode-1,jnode-1,knode-1,nbc).ne.1.or.&
-                        map_nodes(inode+1,jnode+1,knode+1,nbc).ne.1)then
+                        map_nodes(inode+2,jnode+2,knode+2,nbc).ne.1)then
                     nnb(nbc)=1
                 endif
             enddo
