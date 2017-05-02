@@ -639,7 +639,7 @@ Subroutine define_sizes
 
               if (int((NNbl_bl(4,1)- NNbl_bl(1,1))/istep).eq.0.or.&
                   int((NNbl_bl(5,1)- NNbl_bl(2,1))/istep).eq.0.or.&
-                  int((NNbl_bl(5,1)- NNbl_bl(2,1))/istep).eq.0) then 
+                  int((NNbl_bl(6,1)- NNbl_bl(3,1))/istep).eq.0) then 
                   ilevmax = lev-1
                   print *, 'Changing number of levels',ilevmax
                   exit
