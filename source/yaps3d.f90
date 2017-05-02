@@ -453,7 +453,8 @@
 
     contains
 
-        Subroutine mapnodes_bl
+!-----
+       Subroutine mapnodes_bl
 
             integer :: i_nb,j_nb,icnb,jcnb,inode1,jnode1,nbc,nb_plus,nb_minus,i_check,j_check,ik,jk,kk
             integer :: nod,ibound,isizex,isizey,isizez,i_plus,j_plus,k_plus,i_minus,j_minus,k_minus
@@ -1910,12 +1911,11 @@
 
         End Subroutine mapnodes_bl
 
-!-----
-        Subroutine interp_stencil
+   Subroutine interp_stencil
             double precision :: projection_fun,addlocal,add(neq),add_sample(neq)
             integer          :: i_nb,j_nb,k_nb
 
-            iproj=4
+            iproj=3
             X(1) = Xbound_bl(1,nb) + (i-1)*Dpm_fine(1)
             X(2) = Xbound_bl(2,nb) + (j-1)*Dpm_fine(2)
             X(3) = Xbound_bl(3,nb) + (k-1)*Dpm_fine(3)
@@ -1923,22 +1923,22 @@
             !   SOL_pm_bl(i,j,1,1,nb)=SOL_pm_fine(inode,jnode,1,1)
             !inode =int(((X(1) - Xbound_coarse(1)) / Dpm_coarse(1))) + 1
             !jnode =int(((X(2) - Xbound_coarse(2)) / Dpm_coarse(2))) + 1
-            inode =int(((X(1) - Xbound_coarse(1)) / Dpm_coarse(1))) + 1
-            jnode =int(((X(2) - Xbound_coarse(2)) / Dpm_coarse(2))) + 1
-            knode =int(((X(3) - Xbound_coarse(3)) / Dpm_coarse(3))) + 1
+            inode =int(nint((X(1) - Xbound_coarse(1)) / Dpm_coarse(1))) + 1
+            jnode =int(nint((X(2) - Xbound_coarse(2)) / Dpm_coarse(2))) + 1
+            knode =int(nint((X(3) - Xbound_coarse(3)) / Dpm_coarse(3))) + 1
             !--We search the 4 nodes close to the particles
             nnb=0
             addlocal=0
             do nbc = 1,BLOCKS
-                if(map_nodes(inode-1,jnode-1,knode-1,nbc).ne.1.and.&
-                        map_nodes(inode+2,jnode+2,knode+2,nbc).ne.1)then
+                if(map_nodes(inode-1,jnode-1,knode-1,nbc).ne.1.or.&
+                        map_nodes(inode+1,jnode+1,knode+1,nbc).ne.1)then
                     nnb(nbc)=1
                 endif
             enddo
             
-            do kc = knode-1, knode + 2
-               do jc = jnode-1 , jnode + 2
-                   do ic = inode-1 , inode + 2
+            do kc = knode-1, knode + 1
+               do jc = jnode-1 , jnode + 1
+                   do ic = inode-1 , inode + 1
                        add=0.d0
                        add_sample=0.d0
                        do nbc=1,BLOCKS
@@ -1981,6 +1981,8 @@
 
 
         End Subroutine interp_stencil
+
+
 
 
     End Subroutine yaps3d
